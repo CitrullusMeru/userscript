@@ -41,7 +41,7 @@
         console.log('🧊 ICE MAGE: battle page ready (iOS)');
 
         startScript();
-        await BattleLoop();
+        //BattleLoop();
     })();
 
     /* ================= Core ================= */
@@ -223,5 +223,5 @@
             }
         }
     }
-
+    init();
 })();
