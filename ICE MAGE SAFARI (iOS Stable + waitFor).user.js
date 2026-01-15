@@ -23,7 +23,7 @@
         return null;
     }
 
-    await sleep(500);
+    await sleep(200);
 
     /* ================= Init ================= */
 
@@ -41,6 +41,7 @@
         console.log('🧊 ICE MAGE: battle page ready (iOS)');
 
         startScript();
+        await BattleLoop();
     })();
 
     /* ================= Core ================= */
