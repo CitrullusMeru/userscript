@@ -23,7 +23,7 @@
         return null;
     }
 
-    await sleep(200);
+    await sleep(500);
 
     /* ================= Init ================= */
 
@@ -31,11 +31,6 @@
         if (location.href.includes('/isekai/')) return;
 
         await waitFor('body');
-
-        if (!/s=Battle/.test(location.search)) {
-            console.log('🧊 ICE MAGE: not battle page');
-            return;
-        }
 
         const monsterPane = await waitFor('#pane_monster');
         if (!monsterPane) {
