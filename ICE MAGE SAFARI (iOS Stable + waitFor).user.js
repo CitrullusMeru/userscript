@@ -223,5 +223,7 @@
             }
         }
     }
-    init();
+    //init();
+    scriptRunning = true;
+    BattleLoop();
 })();
