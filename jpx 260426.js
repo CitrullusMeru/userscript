@@ -1,0 +1,6324 @@
+// ==UserScript==
+// @name         jpx
+// @namespace    ijpx
+// @version      2026.04.13
+// @description  jpx
+// @run-at       document-end
+// @match        *://*.hentaiverse.org/*
+// @exclude      *hentaiverse.org/equip/*
+// @exclude      *hentaiverse.org/isekai/equip/*
+// @grant        none
+// ==/UserScript==
+
+let cfgBattle = {};
+let defaultCfgBattle = {
+    "battleVersion": 20251216,
+    "advanceToNextRound": false,
+    "ajaxRound": false,
+    "showCooldowns": false,
+    "quickbarExtend": [],
+    "showDurations": false,
+    "showRealTimeProficiency": false,
+    "showMonsterIndex": false,
+    "showMonsterInfo": false,
+    "showMonsterHP": false,
+    "recordBattleLog": false,
+    "dailyStaminaQuotaPlus": 0,
+    "ctrlWidgetStyleText": [],
+    "ctrlWidgetMouseEnter": false,
+    "ctrlWidgetRows": [
+        {"id":"isActiveBattle"},
+        {"id":"readyNext"},
+        {"id":"networkDelay"},
+        {"id":"battleStyle"},
+        {"id":"battleType"},
+        {"id":"round"}
+    ],
+    "OneHanded_General": {
+        "supports": [
+            {"type":"item","name":"Spirit Gem","conditions":[{"key":"pSP","value":[0,0.9]}]},
+            {"type":"item","name":"Spirit Potion","conditions":[{"key":"pSP","value":[0,0.5]}]},
+            {"type":"item","name":"Last Elixir","conditions":[{"key":"pSP","value":[0,0.4]}]},
+            {"type":"item","name":"Spirit Elixir","conditions":[{"key":"pSP","value":[0,0.4]}]},
+            {"type":"stop","customMessage":"Can't use Spirit Elixir","conditions":[{"key":"pSP","value":[0,0.4]}]},
+            {"type":"item","name":"Health Gem","conditions":[]},
+            {"type":"spellSupport","name":"Cure","conditions":[{"key":"pHP","value":[0,0.4]}]},
+            {"type":"item","name":"Health Potion","conditions":[{"key":"pHP","value":[0,0.4]}]},
+            {"type":"spellSupport","name":"Full-Cure","conditions":[{"key":"pHP","value":[0,0.4]}]},
+            {"type":"item","name":"Health Elixir","conditions":[{"key":"pHP","value":[0,0.4]}]},
+            {"type":"stop","customMessage":"Can't use Health Elixir","conditions":[{"key":"pHP","value":[0,0.4]}]},
+            {"type":"item","name":"Mana Gem","conditions":[{"key":"pMP","value":[0,0.8]}]},
+            {"type":"item","name":"Mana Potion","conditions":[{"key":"pMP","value":[0,0.4]}]},
+            {"type":"item","name":"Mana Elixir","conditions":[{"key":"pMP","value":[0,0.1]}]},
+            {"type":"stop","customMessage":"Can't use Mana Elixir","conditions":[{"key":"pMP","value":[0,0.1]}]},
+            {"type":"item","name":"Mystic Gem","conditions":[{"key":"pIgnoredEffects","value":[0,9999,"Channeling"]}]},
+            {"type":"spellSupport","name":"Heartseeker","conditions":[{"key":"pEffects","value":[0,9999,"Channeling"]},{"key":"pEffects","value":[-1,100,"Heartseeker"]}]},
+            {"type":"spellSupport","name":"Regen","conditions":[{"key":"pEffects","value":[0,9999,"Channeling"]},{"key":"pEffects","value":[-1,50,"Regen"]}]},
+            {"type":"toggle","name":"Spirit","toggled":true,"conditions":[{"key":"pOC","value":[6,10]}]},
+            {"type":"spellSupport","name":"Heartseeker","conditions":[{"key":"pEffects","value":[-1,0,"Heartseeker"]}]},
+            {"type":"spellSupport","name":"Regen","conditions":[{"key":"pEffects","value":[-1,0,"Regen"]}]},
+            {"type":"item","name":"Health Draught","conditions":[{"key":"pEffects","value":[-1,0,"Regeneration"]},{"key":"monsters","value":[4,10]},{"key":"battleTypes","value":["Arena","Colosseum","Battle1000","Tower","Item"]}]},
+            {"type":"item","name":"Mana Draught","conditions":[{"key":"pEffects","value":[-1,0,"Replenishment"]},{"key":"pMP","value":[0,0.85]},{"key":"battleTypes","value":["Arena","Colosseum","Battle1000","Tower","Item"]}]},
+            {"type":"item","name":"Spirit Draught","conditions":[{"key":"pEffects","value":[-1,0,"Refreshment"]},{"key":"pSP","value":[0,0.9]},{"key":"battleTypes","value":["Arena","Colosseum","Battle1000","Tower","Item"]}]}
+        ],
+        "attacks": [
+            {"type":"smartDebuff","name":"Weaken","targetCount":3,"tailSkip":0,"bottomUp":false,"maxAtFirst":10,"minMonstersLeft":10,"conditions":[{"key":"tTypes","value":["Arena400","Arena500"],"offset":[0,0],"matched":[1,1]},{"key":"tIgnoredEffects","value":[1,9999,"Weakened"],"offset":[0,0],"matched":[1,1]}]},
+            {"type":"target","priorityRule":"Top Down","conditions":[{"key":"world","value":["Persistent"]},{"key":"tDaysSinceUpdate","value":[46,9999],"offset":[0,0],"matched":[1,1]},{"key":"tIgnoredEffects","value":[0,9999,"Imperiled","Searing Skin","Freezing Limbs","Turbulent Air","Deep Burns","Breached Defense","Blunted Attack"],"offset":[0,0],"matched":[1,1]}]},
+            {"type":"skill","name":"Scan","conditions":[{"key":"pActionCounts","value":[0,0,"Scan"]}]},
+            {"type":"target","priorityRule":"Top Down","conditions":[{"key":"tName","value":"Yggdrasil","offset":[0,0],"matched":[1,1]}]},
+            {"type":"target","priorityRule":"Top Down","conditions":[{"key":"tTypes","value":["Rare","Legendary","Ultimate","Arena300","Arena400","Arena500"],"offset":[0,0],"matched":[1,1]}]},
+            {"type":"target","priorityRule":"Top Down","conditions":[]},
+            {"type":"skill","name":"Orbital Friendship Cannon","conditions":[{"key":"activeMonsters","value":[6,10]},{"key":"pOC","value":[9,10]},{"key":"pSpiritStatus","value":true}]},
+            {"type":"smartDebuff","name":"Imperil","targetCount":3,"bottomUp":false,"tailSkip":0,"maxAtFirst":10,"minMonstersLeft":10,"conditions":[{"key":"tIgnoredEffects","value":[1,9999,"Imperiled"],"offset":[0,0],"matched":[1,1]},{"key":"tTypes","value":["Rare","Legendary","Ultimate","Arena300","Arena400","Arena500"],"offset":[0,0],"matched":[1,1]}]},
+            {"type":"smartDebuff","name":"Imperil","targetCount":3,"bottomUp":false,"tailSkip":-1,"maxAtFirst":10,"minMonstersLeft":10,"conditions":[{"key":"tIgnoredEffects","value":[1,9999,"Imperiled"],"offset":[0,0],"matched":[1,1]},{"key":"activeBosses","value":[0,0]}]},
+            {"type":"skill","name":"Merciful Blow","conditions":[{"key":"tTypes","value":["Ultimate","Arena300","Arena400","Arena500"],"offset":[0,0],"matched":[1,1]},{"key":"tEffects","value":[0,9999,"Bleeding Wound"],"offset":[0,0],"matched":[1,1]},{"key":"tHP","value":[0.04,0.22],"offset":[0,0],"matched":[1,1]},{"key":"pOC","value":[4.5,10]}]},
+            {"type":"skill","name":"Vital Strike","conditions":[{"key":"tTypes","value":["Ultimate","Arena300","Arena400","Arena500"],"offset":[0,0],"matched":[1,1]},{"key":"tEffects","value":[0,9999,"Stunned"],"offset":[0,0],"matched":[1,1]},{"key":"tHP","value":[0.05,1],"offset":[0,0],"matched":[1,1]},{"key":"pOC","value":[2.5,10]}]},
+            {"type":"normalAttack"}
+        ]
+    },
+    "OneHanded_Tower": {
+        "supports": [
+            {"type":"item","name":"Spirit Gem","conditions":[{"key":"pSP","value":[0,0.9]}]},
+            {"type":"item","name":"Spirit Potion","conditions":[{"key":"pSP","value":[0,0.6]}]},
+            {"type":"item","name":"Last Elixir","conditions":[{"key":"pSP","value":[0,0.6]}]},
+            {"type":"item","name":"Spirit Elixir","conditions":[{"key":"pSP","value":[0,0.6]}]},
+            {"type":"stop","customMessage":"Can't use Spirit Elixir","conditions":[{"key":"pSP","value":[0,0.6]}]},
+            {"type":"item","name":"Health Gem","conditions":[]},
+            {"type":"spellSupport","name":"Cure","conditions":[{"key":"pHP","value":[0,0.4]}]},
+            {"type":"item","name":"Health Potion","conditions":[{"key":"pHP","value":[0,0.4]}]},
+            {"type":"spellSupport","name":"Full-Cure","conditions":[{"key":"pHP","value":[0,0.4]}]},
+            {"type":"item","name":"Health Elixir","conditions":[{"key":"pHP","value":[0,0.4]}]},
+            {"type":"stop","customMessage":"Can't use Health Elixir","conditions":[{"key":"pHP","value":[0,0.4]}]},
+            {"type":"item","name":"Mana Gem","conditions":[{"key":"pMP","value":[0,0.8]}]},
+            {"type":"item","name":"Mana Potion","conditions":[{"key":"pMP","value":[0,0.4]}]},
+            {"type":"item","name":"Mana Elixir","conditions":[{"key":"pMP","value":[0,0.1]}]},
+            {"type":"stop","customMessage":"Can't use Mana Elixir","conditions":[{"key":"pMP","value":[0,0.1]}]},
+            {"type":"item","name":"Mystic Gem","conditions":[{"key":"pIgnoredEffects","value":[0,9999,"Channeling"]}]},
+            {"type":"spellSupport","name":"Heartseeker","conditions":[{"key":"pEffects","value":[0,9999,"Channeling"]},{"key":"pEffects","value":[-1,100,"Heartseeker"]}]},
+            {"type":"spellSupport","name":"Regen","conditions":[{"key":"pEffects","value":[0,9999,"Channeling"]},{"key":"pEffects","value":[-1,50,"Regen"]}]},
+            {"type":"toggle","name":"Spirit","toggled":true,"conditions":[{"key":"pOC","value":[6,10]},{"key":"defeatedMonsters","value":[1,10]}]},
+            {"type":"spellSupport","name":"Heartseeker","conditions":[{"key":"pEffects","value":[-1,0,"Heartseeker"]}]},
+            {"type":"spellSupport","name":"Regen","conditions":[{"key":"pEffects","value":[-1,0,"Regen"]}]},
+            {"type":"item","name":"Health Draught","conditions":[{"key":"pEffects","value":[-1,0,"Regeneration"]},{"key":"monsters","value":[4,10]}]},
+            {"type":"item","name":"Mana Draught","conditions":[{"key":"pEffects","value":[-1,0,"Replenishment"]},{"key":"pMP","value":[0,0.85]}]},
+            {"type":"item","name":"Spirit Draught","conditions":[{"key":"pEffects","value":[-1,0,"Refreshment"]},{"key":"pSP","value":[0,0.9]}]}
+        ],
+        "attacks": [
+            {"type":"smartDebuff","targetCount":3,"name":"Sleep","bottomUp":true,"tailSkip":1,"maxAtFirst":10,"minMonstersLeft":10,"conditions":[{"key":"tIgnoredEffects","value":[1,9999,"Asleep"],"offset":[0,0],"matched":[1,1]},{"key":"roundCurrent","value":[0,9999]},{"key":"floor","value":[36,9999]}]},
+            {"type":"smartDebuff","targetCount":3,"name":"Weaken","bottomUp":false,"tailSkip":0,"maxAtFirst":10,"minMonstersLeft":10,"conditions":[{"key":"tIgnoredEffects","value":[1,9999,"Weakened","Asleep"],"offset":[0,0],"matched":[1,1]},{"key":"roundCurrent","value":[10,9999]},{"key":"floor","value":[40,9999]}]},
+            {"type":"smartDebuff","targetCount":3,"name":"Silence","bottomUp":true,"tailSkip":0,"maxAtFirst":10,"minMonstersLeft":10,"conditions":[{"key":"tIgnoredEffects","value":[1,9999,"Asleep","Silenced"],"offset":[0,0],"matched":[1,1]},{"key":"roundCurrent","value":[15,9999]},{"key":"floor","value":[40,9999]}]},
+            {"type":"smartDebuff","targetCount":3,"name":"Imperil","bottomUp":false,"tailSkip":-1,"maxAtFirst":10,"minMonstersLeft":10,"conditions":[{"key":"tIgnoredEffects","value":[1,9999,"Imperiled"],"offset":[0,0],"matched":[1,1]},{"key":"roundCurrent","value":[0,9999]},{"key":"floor","value":[40,9999]}]},
+            {"type":"target","priorityRule":"Top Down","conditions":[]},
+            {"type":"toggle","name":"Spirit","toggled":true,"conditions":[{"key":"pOC","value":[6,10]}]},
+            {"type":"skill","name":"Merciful Blow","conditions":[{"key":"tEffects","value":[0,9999,"Bleeding Wound"],"offset":[0,0],"matched":[1,1]},{"key":"tHP","value":[0.04,0.22],"offset":[0,0],"matched":[1,1]},{"key":"pOC","value":[4.5,10]},{"key":"roundCurrent","value":[0,9999]},{"key":"floor","value":[95,9999]}]},
+            {"type":"skill","name":"Vital Strike","conditions":[{"key":"tEffects","value":[0,9999,"Stunned"],"offset":[0,0],"matched":[1,1]},{"key":"tHP","value":[0.05,1],"offset":[0,0],"matched":[1,1]},{"key":"pOC","value":[2.5,10]},{"key":"pSpiritStatus","value":true},{"key":"roundCurrent","value":[0,9999]},{"key":"floor","value":[60,9999]}]},
+            {"type":"normalAttack"}
+        ]
+    },
+    "1H_Mage_General": {
+        "supports": [
+
+        ],
+        "attacks": [
+
+        ]
+    },
+    "TwoHanded_General": {
+        "supports": [
+
+        ],
+        "attacks": [
+
+        ]
+    },
+    "2H_Mage_General": {
+        "supports": [
+
+        ],
+        "attacks": [
+
+        ]
+    },
+	"DualWielding_General": {
+        "supports": [
+            {"type":"item","name":"Spirit Gem","conditions":[{"key":"pSP","value":[0,0.9]}]},
+            {"type":"item","name":"Spirit Potion","conditions":[{"key":"pSP","value":[0,0.5]}]},
+            {"type":"item","name":"Last Elixir","conditions":[{"key":"pSP","value":[0,0.4]}]},
+            {"type":"item","name":"Spirit Elixir","conditions":[{"key":"pSP","value":[0,0.4]}]},
+            {"type":"stop","customMessage":"Can't use Spirit Elixir","conditions":[{"key":"pSP","value":[0,0.4]}]},
+            {"type":"item","name":"Health Gem","conditions":[]},
+            {"type":"spellSupport","name":"Cure","conditions":[{"key":"pHP","value":[0,0.4]}]},
+            {"type":"item","name":"Health Potion","conditions":[{"key":"pHP","value":[0,0.4]}]},
+            {"type":"spellSupport","name":"Full-Cure","conditions":[{"key":"pHP","value":[0,0.4]}]},
+            {"type":"item","name":"Health Elixir","conditions":[{"key":"pHP","value":[0,0.4]}]},
+            {"type":"stop","customMessage":"Can't use Health Elixir","conditions":[{"key":"pHP","value":[0,0.4]}]},
+            {"type":"item","name":"Mana Gem","conditions":[{"key":"pMP","value":[0,0.8]}]},
+            {"type":"item","name":"Mana Potion","conditions":[{"key":"pMP","value":[0,0.4]}]},
+            {"type":"item","name":"Mana Elixir","conditions":[{"key":"pMP","value":[0,0.1]}]},
+            {"type":"stop","customMessage":"Can't use Mana Elixir","conditions":[{"key":"pMP","value":[0,0.1]}]},
+            {"type":"item","name":"Mystic Gem","conditions":[{"key":"pIgnoredEffects","value":[0,9999,"Channeling"]}]},
+            {"type":"spellSupport","name":"Heartseeker","conditions":[{"key":"pEffects","value":[0,9999,"Channeling"]},{"key":"pEffects","value":[-1,100,"Heartseeker"]}]},
+            {"type":"spellSupport","name":"Regen","conditions":[{"key":"pEffects","value":[0,9999,"Channeling"]},{"key":"pEffects","value":[-1,50,"Regen"]}]},
+            {"type":"toggle","name":"Spirit","toggled":true,"conditions":[{"key":"pOC","value":[9,10]}]},
+            {"type":"spellSupport","name":"Heartseeker","conditions":[{"key":"pEffects","value":[-1,0,"Heartseeker"]}]},
+            {"type":"spellSupport","name":"Regen","conditions":[{"key":"pEffects","value":[-1,0,"Regen"]}]},
+            {"type":"item","name":"Health Draught","conditions":[{"key":"pEffects","value":[-1,0,"Regeneration"]},{"key":"monsters","value":[4,10]}]},
+            {"type":"item","name":"Mana Draught","conditions":[{"key":"pEffects","value":[-1,0,"Replenishment"]},{"key":"pMP","value":[0,0.85]}]},
+            {"type":"item","name":"Spirit Draught","conditions":[{"key":"pEffects","value":[-1,0,"Refreshment"]},{"key":"pSP","value":[0,0.9]}]}
+        ],
+        "attacks": [
+            {"type":"smartDebuff","name":"Weaken","targetCount":3,"tailSkip":0,"bottomUp":false,"maxAtFirst":10,"minMonstersLeft":10,"conditions":[{"key":"tTypes","value":["Arena400","Arena500"],"offset":[0,0],"matched":[1,1]},{"key":"tIgnoredEffects","value":[1,9999,"Weakened"],"offset":[0,0],"matched":[1,1]}]},
+            {"type":"target","priorityRule":"Top Down","conditions":[{"key":"tName","value":"Yggdrasil","offset":[0,0],"matched":[1,1]}]},
+            {"type":"spellDebuff","name":"Imperil","conditions":[{"key":"tIgnoredEffects","value":[1,9999,"Imperiled"],"offset":[0,0],"matched":[1,1]}]},
+            {"type":"normalAttack"},
+            {"type":"smartDebuff","name":"Imperil","bottomUp":false,"tailSkip":0,"maxAtFirst":4,"minMonstersLeft":6,"conditions":[{"key":"tIgnoredEffects","value":[1,9999,"Imperiled"],"offset":[0,0],"matched":[1,1]}],"targetCount":3},
+            {"type":"target","priorityRule":"Bottom Up","conditions":[{"key":"tIndex","value":[3,-3],"offset":[0,0],"matched":[1,1]},{"key":"tTypes","value":["Rare","Legendary","Ultimate","Arena300","Arena400","Arena500"],"offset":[-2,2],"matched":[3,5]},{"key":"tHP","value":[0.5,1],"offset":[-2,2],"matched":[3,5]}]},
+            {"type":"target","priorityRule":"Bottom Up","conditions":[{"key":"tTypes","value":["Rare","Legendary","Ultimate","Arena300","Arena400","Arena500"],"offset":[-2,2],"matched":[3,5]},{"key":"tHP","value":[0.5,1],"offset":[-2,2],"matched":[3,5]}]},
+            {"type":"target","priorityRule":"Bottom Up","conditions":[{"key":"tIndex","value":[3,-3],"offset":[0,0],"matched":[1,1]},{"key":"tTypes","value":["Rare","Legendary","Ultimate","Arena300","Arena400","Arena500"],"offset":[-2,2],"matched":[2,5]},{"key":"tHP","value":[0.5,1],"offset":[-2,2],"matched":[2,5]}]},
+            {"type":"target","priorityRule":"Bottom Up","conditions":[{"key":"tIndex","value":[2,-2],"offset":[0,0],"matched":[1,1]},{"key":"tTypes","value":["Rare","Legendary","Ultimate","Arena300","Arena400","Arena500"],"offset":[-2,2],"matched":[2,5]},{"key":"tHP","value":[0.5,1],"offset":[-2,2],"matched":[2,5]}]},
+            {"type":"target","priorityRule":"Bottom Up","conditions":[{"key":"tIndex","value":[3,-3],"offset":[0,0],"matched":[1,1]},{"key":"tTypes","value":["Rare","Legendary","Ultimate","Arena300","Arena400","Arena500"],"offset":[-2,2],"matched":[1,5]},{"key":"tHP","value":[0.5,1],"offset":[-2,2],"matched":[2,5]}]},
+            {"type":"target","priorityRule":"Bottom Up","conditions":[{"key":"tIndex","value":[2,-2],"offset":[0,0],"matched":[1,1]},{"key":"tTypes","value":["Rare","Legendary","Ultimate","Arena300","Arena400","Arena500"],"offset":[-2,2],"matched":[1,5]},{"key":"tHP","value":[0.5,1],"offset":[-2,2],"matched":[2,5]}]},
+            {"type":"target","priorityRule":"Bottom Up","conditions":[{"key":"tTypes","value":["Rare","Legendary","Ultimate","Arena300","Arena400","Arena500"],"offset":[0,0],"matched":[1,1]},{"key":"tHP","value":[0.5,1],"offset":[0,0],"matched":[1,1]}]},
+            {"type":"target","priorityRule":"Bottom Up","conditions":[{"key":"tHP","value":[0.5,1],"offset":[-2,2],"matched":[5,5]}]},
+            {"type":"target","priorityRule":"Bottom Up","conditions":[{"key":"pOC","value":[10,10]},{"key":"tHP","value":[0,1],"offset":[3,4],"matched":[0,0]},{"key":"tHP","value":[0,1],"offset":[1,2],"matched":[1,2]}]},
+            {"type":"toggle","name":"Spirit","toggled":true,"conditions":[{"key":"pOC","value":[4,10]}]},
+            {"type":"skill","name":"Frenzied Blows","conditions":[{"key":"pOC","value":[3.5,10]},{"key":"pSpiritStatus","value":true}]},
+            {"type":"target","priorityRule":"Current HP High to Low","conditions":[]},
+            {"type":"toggle","name":"Spirit","toggled":false,"conditions":[{"key":"pOC","value":[0,5]},{"key":"tTypes","value":["Rare","Legendary","Ultimate","Arena300","Arena400","Arena500"],"offset":[0,0],"matched":[1,1]},{"key":"tHP","value":[0,0.35],"offset":[0,0],"matched":[1,1]}]},
+            {"type":"toggle","name":"Spirit","toggled":false,"conditions":[{"key":"pOC","value":[0,5]},{"key":"bosses","value":[1,3]},{"key":"tTypes","value":["Normal"],"offset":[0,0],"matched":[1,1]},{"key":"tHP","value":[0,0.45],"offset":[0,0],"matched":[1,1]}]},
+            {"type":"target","priorityRule":"Top Down","conditions":[{"key":"tTypes","value":["Rare","Legendary","Ultimate","Arena300","Arena400","Arena500"],"offset":[0,0],"matched":[1,1]},{"key":"tTypes","value":["Rare","Legendary","Ultimate","Arena300","Arena400","Arena500"],"offset":[-2,2],"matched":[1,1]}]},
+            {"type":"target","priorityRule":"Current HP High to Low","conditions":[{"key":"tTypes","value":["Rare","Legendary","Ultimate","Arena300","Arena400","Arena500"],"offset":[0,0],"matched":[1,1]},{"key":"tTypes","value":["Rare","Legendary","Ultimate","Arena300","Arena400","Arena500"],"offset":[-2,2],"matched":[2,5]},{"key":"tHP","value":[0.2,1],"offset":[0,0],"matched":[1,1]}]},
+			{"type":"target","priorityRule":"Top Down","conditions":[{"key":"tTypes","value":["Rare","Legendary","Ultimate","Arena300","Arena400","Arena500"],"offset":[0,0],"matched":[1,1]}]},
+            {"type":"target","priorityRule":"Top Down","conditions":[]},
+            {"type":"normalAttack"}
+        ]
+    },
+    "DW_Mage_General": {
+        "supports": [
+
+        ],
+        "attacks": [
+
+        ]
+    },
+    "NitenIchiryu_General": {
+        "supports": [
+
+        ],
+        "attacks": [
+
+        ]
+    },
+    "NI_Mage_General": {
+        "supports": [
+
+        ],
+        "attacks": [
+
+        ]
+    },
+    "Staff_General": {
+        "supports": [
+            {"type":"item","name":"Spirit Gem","conditions":[{"key":"pSP","value":[0,0.9]}]},
+            {"type":"item","name":"Spirit Potion","conditions":[{"key":"pSP","value":[0,0.5]}]},
+            {"type":"item","name":"Last Elixir","conditions":[{"key":"pSP","value":[0,0.4]}]},
+            {"type":"item","name":"Spirit Elixir","conditions":[{"key":"pSP","value":[0,0.4]}]},
+            {"type":"stop","customMessage":"Can't use Spirit Elixir","conditions":[{"key":"pSP","value":[0,0.4]}]},
+            {"type":"item","name":"Health Gem","conditions":[]},
+            {"type":"spellSupport","name":"Cure","conditions":[{"key":"pHP","value":[0,0.4]}]},
+            {"type":"item","name":"Health Potion","conditions":[{"key":"pHP","value":[0,0.4]}]},
+            {"type":"spellSupport","name":"Full-Cure","conditions":[{"key":"pHP","value":[0,0.4]}]},
+            {"type":"item","name":"Health Elixir","conditions":[{"key":"pHP","value":[0,0.4]}]},
+            {"type":"stop","customMessage":"Can't use Health Elixir","conditions":[{"key":"pHP","value":[0,0.4]}]},
+            {"type":"item","name":"Mana Gem","conditions":[{"key":"pMP","value":[0,0.8]}]},
+            {"type":"item","name":"Mana Potion","conditions":[{"key":"pMP","value":[0,0.4]}]},
+            {"type":"item","name":"Mana Elixir","conditions":[{"key":"pMP","value":[0,0.1]}]},
+            {"type":"stop","customMessage":"Can't use Mana Elixir","conditions":[{"key":"pMP","value":[0,0.1]}]},
+            {"type":"item","name":"Mystic Gem","conditions":[{"key":"pIgnoredEffects","value":[0,9999,"Channeling"]}]},
+            {"type":"spellSupport","name":"Arcane Focus","conditions":[{"key":"pEffects","value":[0,9999,"Channeling"]},{"key":"pEffects","value":[-1,100,"Arcane Focus"]}]},
+            {"type":"spellSupport","name":"Regen","conditions":[{"key":"pEffects","value":[0,9999,"Channeling"]},{"key":"pEffects","value":[-1,50,"Regen"]}]},
+            {"type":"spellSupport","name":"Arcane Focus","conditions":[{"key":"pEffects","value":[-1,0,"Arcane Focus"]}]},
+            {"type":"spellSupport","name":"Regen","conditions":[{"key":"pEffects","value":[-1,0,"Regen"]}]},
+            {"type":"item","name":"Health Draught","conditions":[{"key":"pEffects","value":[-1,0,"Regeneration"]},{"key":"monsters","value":[4,10]},{"key":"battleTypes","value":["Arena","Colosseum","Battle1000","Tower","Item"]}]},
+            {"type":"item","name":"Mana Draught","conditions":[{"key":"pEffects","value":[-1,0,"Replenishment"]},{"key":"pMP","value":[0,0.85]},{"key":"battleTypes","value":["Arena","Colosseum","Battle1000","Tower","Item"]}]},
+            {"type":"item","name":"Spirit Draught","conditions":[{"key":"pEffects","value":[-1,0,"Refreshment"]},{"key":"pSP","value":[0,0.9]},{"key":"battleTypes","value":["Arena","Colosseum","Battle1000","Tower","Item"]}]}
+        ],
+        "attacks": [
+            {"type":"smartDebuff","targetCount":3,"name":"Weaken","bottomUp":false,"tailSkip":0,"maxAtFirst":10,"minMonstersLeft":10,"conditions":[{"key":"tIgnoredEffects","value":[1,9999,"Weakened"],"offset":[0,0],"matched":[1,1]},{"key":"tTypes","value":["Arena400","Arena500"],"offset":[0,0],"matched":[1,1]}]},
+            {"type":"smartDebuff","targetCount":3,"name":"Silence","bottomUp":false,"tailSkip":0,"maxAtFirst":10,"minMonstersLeft":10,"conditions":[{"key":"tIgnoredEffects","value":[1,9999,"Silenced"],"offset":[0,0],"matched":[1,1]},{"key":"tTypes","value":["Arena400","Arena500"],"offset":[0,0],"matched":[1,1]}]},
+            {"type":"smartDebuff","targetCount":3,"name":"Imperil","bottomUp":false,"tailSkip":0,"maxAtFirst":3,"minMonstersLeft":5,"conditions":[{"key":"tIgnoredEffects","value":[1,9999,"Imperiled"],"offset":[0,0],"matched":[1,1]}]},
+            {"type":"target","priorityRule":"Top Down","conditions":[{"key":"tDaysSinceUpdate","value":[46,9999],"offset":[0,0],"matched":[1,1]},{"key":"tIgnoredEffects","value":[0,9999,"Imperiled","Searing Skin","Freezing Limbs","Turbulent Air","Deep Burns","Breached Defense","Blunted Attack"],"offset":[0,0],"matched":[1,1]}]},
+            {"type":"skill","name":"Scan","conditions":[{"key":"pActionCounts","value":[0,0,"Scan"]}]},
+            {"type":"target","priorityRule":"Top Down","conditions":[{"key":"tName","value":"Yggdrasil","offset":[0,0],"matched":[1,1]}]},
+            {"type":"target","priorityRule":"Top Down","conditions":[{"key":"tEffects","value":[0,9999,"Imperiled","Coalesced Mana"],"offset":[0,0],"matched":[1,1]},{"key":"tTypes","value":["Rare","Legendary","Ultimate","Arena300","Arena400","Arena500"],"offset":[0,0],"matched":[1,1]}]},
+            {"type":"target","priorityRule":"Top Down","conditions":[{"key":"tEffects","value":[0,9999,"Coalesced Mana"],"offset":[0,0],"matched":[1,1]},{"key":"tTypes","value":["Rare","Legendary","Ultimate","Arena300","Arena400","Arena500"],"offset":[0,0],"matched":[1,1]}]},
+            {"type":"target","priorityRule":"Top Down","conditions":[{"key":"tEffects","value":[0,9999,"Imperiled","Coalesced Mana"],"offset":[0,0],"matched":[1,1]}]},
+            {"type":"target","priorityRule":"Top Down","conditions":[{"key":"tEffects","value":[0,9999,"Imperiled"],"offset":[0,0],"matched":[1,1]}]},
+            {"type":"target","priorityRule":"Top Down","conditions":[]},
+            {"type":"spellDamage","name":"T3","conditions":[{"key":"activeMonsters","value":[2,10]}]},
+            {"type":"spellDamage","name":"T2","conditions":[{"key":"activeMonsters","value":[2,10]}]},
+            {"type":"spellDamage","name":"T1","conditions":[{"key":"activeMonsters","value":[2,10]}]},
+            {"type":"spellDamage","name":"T3","conditions":[{"key":"pMP","value":[0.2,1]}]},
+            {"type":"spellDamage","name":"T2","conditions":[{"key":"pMP","value":[0.2,1]}]},
+            {"type":"spellDamage","name":"T1","conditions":[{"key":"pMP","value":[0.2,1]}]},
+            {"type":"normalAttack"}
+        ]
+    },
+    "Unarmed_General": {
+        "supports": [
+
+        ],
+        "attacks": [
+
+        ]
+    },
+};
+let cfgStats = {};
+let defaultCfgStats = {
+    "statsVersion": 20260109,
+    "darkMode": false,
+    "combatRows": [
+        {"id":"fire"},
+        {"id":"cold"},
+        {"id":"wind"},
+        {"id":"elec"},
+        {"id":"holy"},
+        {"id":"dark"},
+        {"id":"crushing","s_pt":"background-color: #ff6a6a;"},
+        {"id":"slashing","s_pt":"background-color: #ff6a6a;"},
+        {"id":"piercing","s_pt":"background-color: #ff6a6a;"},
+        {"id":"void"},
+        {"id":"damagePlus"},
+        {"id":"damageTotal"},
+        {"id":"glance","s_pt":"background-color: #e58a8a;"},
+        {"id":"hit","s_pt":"background-color: #e58a8a;"},
+        {"id":"crit","s_pt":"background-color: #e58a8a;"},
+        {"id":"miss","s_pt":"background-color: #66cc33;"},
+        {"id":"evade","s_pt":"background-color: #66cc33;"},
+        {"id":"parry","s_pt":"background-color: #66cc33;"},
+        {"id":"resist","s_md":"background-color: #8f7ee6;"},
+        {"id":"block","s_pt":"background-color: #66cc33;"},
+        {"id":"resultTotal"},
+        {"id":"resist50","s_md":"background-color: #b5a8f2;"},
+        {"id":"resist75","s_md":"background-color: #b5a8f2;"},
+        {"id":"resist90","s_md":"background-color: #b5a8f2;"},
+        {"id":"parryPartially","s_pt":"background-color: #9fd67a;"},
+        {"id":"resistPartially","s_md":"background-color: #b5a8f2;"},
+        {"id":"blockPartially","s_pt":"background-color: #9fd67a;"}
+    ],
+    "revenueRows": [
+        {"id":"exp"},
+        {"id":"proficiency"},
+        {"id":"credit","styleText":"color: #a89000;"},
+        {"id":"equipment","styleText":"color: #f00;"},
+        {"id":"material","styleText":"color: #f00;"},
+        {"id":"consumable","styleText":"color: #00b000;"},
+        {"id":"token","styleText":"color: #3a7540;"},
+        {"id":"food","styleText":"color: #489eff;"},
+        {"id":"figurine","styleText":"color: #25f;"},
+        {"id":"artifact","styleText":"color: #25f;"},
+        {"id":"trophy","styleText":"color: #7c4bff;"},
+        {"id":"crystal","styleText":"color: #ba05b4;"},
+        {"id":"crystalTotal","styleText":"color: #ba05b4;"},
+        {"id":"totalProfit"},
+        {"id":"stamina"},
+        {"id":"finalProfit"}
+    ],
+    "statsColumns": [
+        {"id":"date"},
+        {"id":"world"},
+        {"id":"level"},
+        {"id":"persona"},
+        {"id":"battleType"},
+        {"id":"round"},
+        {"id":"deltaTime"},
+        {"id":"turns"},
+        {"id":"tps"},
+        {"id":"finalProfit"},
+        {"id":"credit"},
+        {"id":"eqP"},
+        {"id":"eqL"},
+        {"id":"eqM"},
+        {"id":"cha"},
+        {"id":"blo"},
+        {"id":"food"},
+        {"id":"fig"},
+        {"id":"arti"},
+        {"id":"crys"},
+        {"id":"t2"},
+        {"id":"t36"},
+        {"id":"lCharm"},
+        {"id":"gCharm"},
+        {"id":"seed"},
+        {"id":"hd"},
+        {"id":"md"},
+        {"id":"sd"},
+        {"id":"hp"},
+        {"id":"mp"},
+        {"id":"sp"},
+        {"id":"he"},
+        {"id":"me"},
+        {"id":"se"},
+        {"id":"le"},
+        {"id":"swif"},
+        {"id":"prot"},
+        {"id":"avat"},
+        {"id":"abso"},
+        {"id":"shad"},
+        {"id":"life"},
+        {"id":"gods"},
+        {"id":"staminaCost"},
+        {"id":"totalProfit"}
+    ]
+};
+let cfg = {
+    //CSS
+    styleText: `
+        #ctrl-widget {
+            position: absolute;
+            top: 752px;
+            left: 1186px;
+            width: 174px;
+            height: auto;
+            transform: translate(-100%, 0);
+            opacity: 0.75;
+            z-index: 100;
+            cursor: pointer;
+            color: #000;
+            font-size: 15px;
+            font-family: arial, helvetica, sans-serif;
+            text-align: center;
+            padding: 2px;
+            border: 1px solid black;
+        }
+
+        #proficiency-record {
+            position: absolute;
+            top: 752px;
+            left: 50px;
+            white-space: nowrap;
+            text-align: left;
+        }
+
+        @media (min-width: 600px) and (orientation:landscape) {
+            #ctrl-widget { top: 702px; left: 1260px; transform: translate(0, -100%); }
+            #proficiency-record { top: 50px; left: 1240px; }
+        }
+
+        #battle_right {
+            position: absolute;
+            top: 42px;
+            left: 681px;
+            width: 364px;
+            overflow: visible;
+
+            .btm6 {
+                min-width: 200px;
+            }
+        }
+
+        .effect-duration {
+            display: inline-block;
+            width: 30px;
+            margin-right: -30px;
+            position: relative;
+            text-align: center;
+            z-index: 1;
+
+            div {
+                display: inline-block;
+                min-width: 16px;
+                padding: 0 2px;
+                background: #edebdf;
+                color: black;
+                font-weight: bold;
+                border: 1px solid black;
+            }
+        }
+
+        .cooldown {
+            width: 37px;
+            margin-top: 7px;
+            position: relative;
+            z-index: 3;
+            color: black;
+            font-size: 20px;
+            font-weight: bold;
+        }
+
+        .monster-hp {
+            display: inline-block;
+            position: relative;
+            top: -20px;
+            left: 204px;
+        }
+
+        #time-records-div { text-align: center; white-space: pre; }
+
+        .records-table {
+            border-top: 1px solid;
+            border-bottom: 1px solid;
+            border-collapse: collapse;
+            background-color: #fff;
+
+            & tr:nth-child(1) > td, & tr:nth-child(2) > td { text-align: center; }
+            & tr:not(:nth-child(1), :nth-child(2)) > td:nth-child(1) { text-align: left; }
+            & td { min-width: 40px; padding: 2px 4px; border-left: 1px solid; border-right: 1px solid; text-align: right; }
+        }
+
+        #time-records-div.dark-mode,
+        #combat-records-use-table.dark-mode,
+        #combat-records-table.dark-mode,
+        #revenue-records-table.dark-mode {
+            color: #eee;
+            background-color: #121212;
+            border-color: #555;
+        }
+
+        #combat-records-table { margin: 10px 0px; }
+        #combat-records-table tr:nth-child(1) > td:not(:nth-child(1)), #combat-records-table tr:nth-child(2) > td { border-bottom: 1px solid; }
+
+        #combat-records-use-table {
+            border-collapse: collapse;
+            background-color: #fff;
+
+            & th, & td { border: 1px solid; min-width: 40px; padding: 2px 4px; }
+            & th { text-align: center; }
+            & td { text-align: left; }
+        }
+
+        #revenue-records-table { margin: 10px auto; }
+        #revenue-records-table .surplus { color: #000; !important; background-color: #a5f779 !important; }
+        #revenue-records-table .deficit { color: #000 !important; background-color: #ff6a6a !important; }
+        #revenue-records-table .noData { color: #000 !important; background-color: #a796fa !important; }
+        #revenue-records-table.dark-mode .surplus { color: #eee !important; background-color: #226709 !important; }
+        #revenue-records-table.dark-mode .deficit { color: #eee !important; background-color: #7c1010 !important; }
+        #revenue-records-table.dark-mode .noData { color: #eee !important; background-color: #433483 !important; }
+
+        .heading { font-weight: bold; margin: 8px 0; border-bottom: 1px solid #ccc; padding-bottom: 2px; }
+
+        .array-row:not(.array-row .array-row) { border: 1px solid #888; background: #eee; padding: 4px; margin: 4px 0; position: relative; }
+
+        .drag-handle { cursor: grab; user-select: none; }
+        .drag-handle:active { cursor: grabbing; }
+
+        .field-picker-select { width: 200px; padding: 4px; border: 1px solid #ccc; border-radius: 4px; }
+        .field-picker-select option:checked { background-color: #e0e0e0; }
+    `,
+};
+
+jpxPanelManager();
+jpxMarket();
+jpxUtils();
+
+let doInitDoBattle = false;
+let isActiveBattle = false;
+
+let readyNext = 0;
+let lastActionTimestamp = Date.now();
+let lastLogTimestamp = Date.now();
+
+let prefix = 'jpx_';
+let isekaiSuffix = document.URL.includes('isekai') ? '_isekai' : '';
+let regExp = {
+    locationQueries: /\w+=\w+/g,
+    playerInfo: /(\w+) Lv\.(\d+)/,
+    staminaInfo: /Stamina:\s(\d+)/,
+    spellInfo: /\('([\w\s-]+)'.*, '(\w+)', (\d+), (\d+), (\d+)\)/, //Name, iconID, MP, OC, CD
+    itemInfo: /set_infopane_item\((\d+)/,
+    battleTypeLog: /Initializing (.*) \.\.\./,
+    floor: /Floor (\d+)/,
+    round: /Round (\d+) \/ (\d+)/,
+    monster: /MID=(\d+) \(([^<>]+)\) \LV=(\d+) HP=(\d+)/g,
+    effectGain: /([\w\s-]+) gains the effect ([\w\s-]+)\./g,
+    effectExpired: /The effect ([\w\s-]+) on ([\w\s-]+) has expired\./g,
+    effectWear: /The effect ([\w\s-]+) on ([\w\s-]+) has worn off\./g,
+    effectWearAsleep: /([^<>]+) has been roused from its sleep\./g,
+    effectWearConfused: /([^<>]+) got knocked out of confuse\./g,
+    oc: /div/g,
+    ocHalf: /vcr/g,
+    /*isekai911*/
+    spellMatch: /\('(?<name>[\w\s-]+)(?:\s\(x(?<stack>\d+)\))?',\s?(?<description>.*),\s?'?(?<turns>[\w\s-]+)'?\)/,
+    /*isekai912*/
+    //battleRecorder
+    turnLog: /([^]+?)<tr><td class="tls">/,
+    //timeRecorder
+    action: />([^<>]+)<\/td><\/tr>(<tr><td class="tlb">Spirit Stance Exhausted<\/td><\/tr>)*<tr><td class="tls"/,
+    /*isekai911*/
+    action2: />([^<>]+)<\/td><\/tr><tr><td class="tlb?">[^<>]+<\/td><\/tr>(<tr><td class="tlb">Spirit Stance Exhausted<\/td><\/tr>)*<tr><td class="tls"/,
+    /*isekai912*/
+    zeroturn: /You use\s*(\w* (?:Gem|Draught|Potion|Elixir|Drink|Candy|Infusion|Scroll|Vase|Bubble))/,
+    use: /You (cast|use) ([\w\s-]+)/,
+    //combatRecorder
+    damage: /[^<>]+damage( \([^<>]+\))*(<\/td><\/tr><tr><td class="tlb">Your spirit shield absorbs \d+ |<|\.)/g,
+    damageType: /for (\d+) (\w+) damage/,
+    spiritShield: /absorbs (\d+)/,
+    crit: /(You crit| crits | blasts )/,
+    strike: /(Fire|Cold|Wind|Elec|Holy|Dark|Void) Strike hits/,
+    damagePlus: /for (\d+) damage/,
+    damagePhysicalPlus: /(Bleeding Wound|Spreading Poison)/,
+    damagePoints: /for (\d+) points of (\w+) damage/,
+    counter: />You counter/g,
+    //    dealt magical
+    magicalDealtMiss: /to connect\./g,
+    magicalDealtEvade: /evades your spell\./g,
+    magicalDealtResist50: / (?:hits|blasts) [^y][^<>]+50%/g,
+    magicalDealtResist75: / (?:hits|blasts) [^y][^<>]+75%/g,
+    magicalDealtResist90: / (?:hits|blasts) [^y][^<>]+90%/g,
+    magicalDealtResist: /resists your spell\./g,
+    //    dealt physical
+    physicalDealtMiss: /its mark\./g,
+    physicalDealtEvade: /(?: dodges your attack\.|evades your offhand attack\.)/g,
+    physicalDealtParry: /parries your attack\./g,
+    //    taken magical
+    magicalTakenEvade: / casts [^<>]+evade the attack\./g,
+    magicalTakenBlock: / casts [^<>]+block the attack\./g,
+    magicalTakenResist50: / (?:hits|blasts) y[^<>]+50%/g,
+    magicalTakenResist75: / (?:hits|blasts) y[^<>]+75%/g,
+    magicalTakenResist90: / (?:hits|blasts) y[^<>]+90%/g,
+    //    taken physical
+    physicalTakenMiss: /misses the attack against you\./g,
+    physicalTakenEvade: /(>You evade| uses [^<>]+evade the attack\.)/g,
+    physicalTakenParry: /(>You parry| uses [^<>]+parry the attack\.)/g,
+    physicalTakenBlock: /(>You block| uses [^<>]+block the attack\.)/g,
+    /*isekai911*/
+    //combatRecorder_isekai
+    damage_isekai: /[^<>]+damage/g,
+    damageTaken1_isekai: /(?<v>glances|hits|crits) you.*?(?<n>\d+).*?(?<t>\w+) damage/,
+    damageTaken2_isekai: /which (?<v>glances|hits|crits).*?(?<n>\d+).*?(?<t>\w+) damage/,
+    spiritShield_isekai: /absorbs (\d+)/,
+    damageDealt1_isekai: /(?:You|Your offhand attack|Arcane Blow) (?:(?<s>\d)x-)*(?<v>glance|hit|crit).*?(?<n>\d+).*?(?<t>\w+) damage/,
+    damageDealt2_isekai: /(?:(?<s>\d)x-)*(?<v>glanced|hit|crit|eviscerated) for (?<n>\d+) (?<t>\w+) damage/,
+    strike_isekai: /(Fire|Cold|Wind|Elec|Holy|Dark|Void) Strike hits.*?(\d+).*?(\w+) damage/,
+    explode_isekai: /explodes for (\d+) (\w+) damage/,
+    damagePlus_isekai: /for (\d+) damage/,
+    damagePhysicalPlus_isekai: /(Bleeding Wound|Spreading Poison)/,
+    damagePoints_isekai: /for (\d+) points of (\w+) damage/,
+    debuffLog_isekai: /(?:<tr><td class="tlb?">[^<>]+(?: gains the effect | partially resists the effects of your spell\.| shrugs off the effects of your spell\.)+[^<>]*<\/td><\/tr>)+<tr><td class="tl">You cast [a-zA-Z]+\.<\/td><\/tr>/,
+    debuffResist0_isekai: / gains the effect /g,
+    debuffResist1_isekai: / partially resists the effects of your spell\./g,
+    debuffResist3_isekai: / shrugs off the effects of your spell\./g,
+    counter_isekai: />You counter/g,
+    //    dealt magical
+    magicalDealtMiss_isekai: / to connect\./g,
+    magicalDealtEvade_isekai: / evades your spell\./g,
+    magicalDealtResistPartially_isekai: / resists, and was/g,
+    magicalDealtResist_isekai: / resists your spell\./g,
+    //    dealt physical
+    physicalDealtMiss_isekai: / its mark\./g,
+    physicalDealtEvade_isekai: / dodges your attack\./g,
+    physicalDealtParryPartially_isekai: / parries[^<>]+?(\d+)[^<>]+?(\w+) damage/g,
+    physicalDealtParry_isekai: / parries your attack\./g,
+    //    taken magical
+    magicalTakenMiss_isekai: /(?:casts[^<>]+, but misses the attack\.|casts[^<>]+, missing you completely\.)/g,
+    magicalTakenEvade_isekai: />You evade the attack\./g,
+    magicalTakenResistPartially_isekai: / resist the attack/g,
+    magicalTakenBlockPartially_isekai: /casts[^<>]+partially block (?:and|resist| )*the attack/g,
+    magicalTakenBlock_isekai: /(?<!partially )block (?:and|resist| )*the attack\./g,
+    //    taken physical
+    physicalTakenMiss_isekai: /(?:uses[^<>]+, but misses the attack\.|(?:vigorously whiffs at a shadow|uses[^<>]+), missing you completely\.)/g,
+    physicalTakenEvade_isekai: />You evade the attack from/g,
+    physicalTakenParryPartially_isekai: /partially parry the attack/g,
+    physicalTakenParry_isekai: /(?<!partially )parry the attack/g,
+    physicalTakenBlockPartially_isekai: /(?:(?:uses[^<>]+|>)You|you) partially block (?:and|partially|parry| )*the attack/g,
+    physicalTakenBlock_isekai: /(?<!partially )block (?:and|partially|parry| )*the attack/g,
+    /*isekai912*/
+    //revenueRecorder
+    gainExp: /gain (\d+) EXP/,
+    gainCredit: /gain (\d+) Credit/,
+    proficiencies: /\d+\.\d+ points of [^<>]+ proficiency/g,
+    proficiency: /(\d+\.\d+) points of ([^<>]+) proficiency/,
+    dropsLogs: /\S+ <span style="color:.{7}">\[[^<>]+\](<\/span><\/td><\/tr><tr><td class="tlb">A traveling)*/g,
+    drop: /(\S+) \<.*#(.{6}).*\[(.*)\](.)*/,
+    quality: /(Crude|Fair|Average|Superior|Exquisite|Magnificent|Legendary|Peerless)/,
+    credit: /(\d+) Credit/,
+    crystal: /(?:(\d+)x )?(Crystal of \w+)/,
+}
+
+let log;
+let battleStyle = '';
+let battleType = '';
+let towerFloor = 0;
+let roundInfo = { current: 0, total: 0 };
+let monsterData = [];
+let allMonsterInfo = {};
+let prevMonsterIds = '';
+let monstersEffects = {};
+let actionCounts = {};
+let battleLogRecord = [];
+let battleLogRecordCurrent = [];
+let timeRecords = {};
+let combatRecords = {};
+let revenueRecords = {};
+let spellDamageBonus = JSON.parse(localStorage.getItem(prefix + 'spellDamageBonus' + isekaiSuffix) || '{"maxType":"fire","maxValue":0}');
+
+let dummy = document.createElement('div');
+let newWindow;
+
+const difficultyMap = { Normal: 1, Hard: 2, Nightmare: 4, Hell: 7, Nintendo: 10, IWBTH: 15, PFUDOR: 20 };
+const itemMap = {
+    10005: 'Health Gem', 10006: 'Mana Gem', 10007: 'Spirit Gem', 10008: 'Mystic Gem',
+    11191: 'Health Draught', 11195: 'Health Potion', 11199: 'Health Elixir',
+    11291: 'Mana Draught', 11295: 'Mana Potion', 11299: 'Mana Elixir',
+    11391: 'Spirit Draught', 11395: 'Spirit Potion', 11399: 'Spirit Elixir',
+    11401: 'Energy Drink', 11402: 'Caffeinated Candy', 11501: 'Last Elixir',
+    12101: 'Infusion of Flames', 12201: 'Infusion of Frost', 12301: 'Infusion of Lightning', 12401: 'Infusion of Storms', 12501: 'Infusion of Divinity', 12601: 'Infusion of Darkness',
+    13101: 'Scroll of Swiftness', 13111: 'Scroll of Protection', 13199: 'Scroll of the Avatar', 13201: 'Scroll of Absorption', 13211: 'Scroll of Shadows', 13221: 'Scroll of Life', 13299: 'Scroll of the Gods',
+    19111: 'Flower Vase', 19131: 'Bubble-Gum',
+};
+const itemSrc = [
+    { keys: ['Health', 'Last Elixir'], src: '/y/e/healthpot.png' },
+    { keys: ['Mana'], src: '/y/e/manapot.png' },
+    { keys: ['Spirit'], src: '/y/e/spiritpot.png' },
+    { keys: ['Drink', 'Candy'], src: '/y/e/soulstone.png' },
+    { keys: ['Flames'], src: '/y/e/fireinfusion.png' },
+    { keys: ['Frost'], src: '/y/e/coldinfusion.png' },
+    { keys: ['Storms'], src: '/y/e/windinfusion.png' },
+    { keys: ['Lightning'], src: '/y/e/elecinfusion.png' },
+    { keys: ['Divinity'], src: '/y/e/holyinfusion.png' },
+    { keys: ['Darkness'], src: '/y/e/darkinfusion.png' },
+    { keys: ['Protection','vatar'], src: '/y/e/protection_scroll.png' },
+    { keys: ['Swiftness'], src: '/y/e/haste_scroll.png' },
+    { keys: ['Absorption'], src: '/y/e/absorb_scroll.png' },
+    { keys: ['Shadows'], src: '/y/e/shadowveil_scroll.png' },
+    { keys: ['Life','Gods'], src: '/y/e/sparklife_scroll.png' },
+    { keys: ['Vase'], src: '/y/e/flowers.png' },
+    { keys: ['Gum'], src: '/y/e/gum.png' }
+];
+const effectSrc = {
+    'Vital Theft': { scr: '/y/e/drainhp.png' },
+    'Ether Theft': { scr: '/y/e/drainmp.png' },
+    'Spirit Theft': { scr: '/y/e/drainsp.png' },
+
+    'Weakened': { scr: '/y/e/weaken.png' },
+    'Imperiled': { scr: '/y/e/imperil.png' },
+    'Slowed': { scr: '/y/e/slow.png' },
+    'Asleep': { scr: '/y/e/sleep.png' },
+    'Confused': { scr: '/y/e/confuse.png' },
+    'Blinded': { scr: '/y/e/blind.png' },
+    'Silenced': { scr: '/y/e/silence.png' },
+    'Magically Snared': { scr: '/y/e/magnet.png' },
+    'Immobilized': { scr: '/y/e/magnet.png' },
+    'Stunned': { scr: '/y/e/wpn_stun.png' },
+    'Penetrated Armor': { scr: '/y/e/wpn_ap.png' },
+    'Bleeding Wound': { scr: '/y/e/wpn_bleed.png' },
+    'Spreading Poison': { scr: '/y/e/poison.png' },
+    'Coalesced Mana': { scr: '/y/e/coalescemana.png' },
+
+    'Searing Skin': { scr: '/y/e/firedot.png' },
+    'Freezing Limbs': { scr: '/y/e/coldslow.png' },
+    'Turbulent Air': { scr: '/y/e/windmiss.png' },
+    'Deep Burns': { scr: '/y/e/elecweak.png' },
+    'Breached Defense': { scr: '/y/e/holybreach.png' },
+    'Blunted Attack': { scr: '/y/e/darknerf.png' },
+    'Burning Soul': { scr: '/y/e/soulfire.png' },
+    'Ripened Soul': { scr: '/y/e/ripesoul.png' },
+
+    'Fury of the Sisters': { scr: '/y/e/trio_furyofthesisters.png' },
+    'Lamentations of the Future': { scr: '/y/e/trio_skuld.png' },
+    'Screams of the Past': { scr: '/y/e/trio_urd.png' },
+    'Wails of the Present': { scr: '/y/e/trio_verdandi.png' },
+    'Absorbing Ward': { scr: '/y/e/absorb.png' },
+};
+const spellsDamageObj = {
+    fire: ['Fiery Blast', 'Inferno', 'Flames of Loki'],
+    cold: ['Freeze', 'Blizzard', 'Fimbulvetr'],
+    wind: ['Gale', 'Downburst', 'Storms of Njord'],
+    elec: ['Shockblast', 'Chained Lightning', 'Wrath of Thor'],
+    holy: ['Smite', 'Banishment', 'Paradise Lost'],
+    dark: ['Corruption', 'Disintegrate', 'Ragnarok'],
+};
+const bossTypes = {
+    Rare: new Set(['Manbearpig', 'White Bunneh', 'Mithra', 'Dalek']),
+    Legendary: new Set(['Konata', 'Mikuru Asahina', 'Ryouko Asakura', 'Yuki Nagato']),
+    Ultimate: new Set(['Skuld', 'Urd', 'Verdandi', 'Yggdrasil', 'Real Life', 'Invisible Pink Unicorn', 'Flying Spaghetti Monster']),
+    Arena300: new Set(['Drogon', 'Rhaegal', 'Viserion']),
+    Arena400: new Set(['New Game +', 'Bottomless Dungeon', 'Recycled Boss Rush', 'Time Trial Mode', 'Achievement Grind', 'Hardcore Mode']),
+    Arena500: new Set(['Angel Bunny', 'Applejack', 'Fluttershy', 'Gummy', 'Pinkie Pie', 'Rarity', 'Spike', 'Rainbow Dash', 'Twilight Sparkle']),
+};
+
+const BATTLE_MODES = ['OneHanded_General', 'OneHanded_Tower', '1H_Mage_General', 'TwoHanded_General', '2H_Mage_General',
+    'DualWielding_General', 'DW_Mage_General', 'NitenIchiryu_General', 'NI_Mage_General', 'Staff_General', 'Unarmed_General'];
+const BATTLE_TYPES = ['Arena', 'Encounter', 'Colosseum', 'Battle1000', 'Item', 'Tower'];
+const PRIORITY_RULES = ['Top Down', 'Bottom Up', 'Current HP Low to High', 'Current HP High to Low', 'Current HP Percent Low to High', 'Current HP Percent High to Low'];
+const MONSTER_TYPES = ['Normal', 'Rare', 'Legendary', 'Ultimate', 'Arena300', 'Arena400', 'Arena500'];
+const MONSTER_CLASSES = ['Arthropod', 'Avion', 'Beast', 'Celestial', 'Daimon', 'Dragonkin', 'Elemental',
+     'Giant', 'Humanoid', 'Mechanoid', 'Reptilian', 'Sprite', 'Undead'];
+const PLAYER_EFFECTS = ['Channeling', 'Regeneration', 'Replenishment', 'Refreshment', 'Regen', 'Heartseeker', 'Arcane Focus',
+    'Hastened', 'Protection', 'Absorbing Ward', 'Shadow Veil', 'Spark of Life', 'Spirit Shield',
+    'Infused Flames', 'Infused Frost', 'Infused Storm', 'Infused Lightning', 'Infused Divinity', 'Infused Darkness',
+    'Energized', 'Sleeper Imprint', 'Kicking Ass',
+    'Overwhelming Strikes', 'Ether Tap', 'Cloak of the Fallen', 'Blessing of the RiddleMaster', 'Defending', 'Focusing'];
+const TOGGLE = ['Spirit', 'Defend', 'Focus'];
+const SKILLS = ['Shield Bash', 'Vital Strike', 'Merciful Blow', 'Iris Strike', 'Backstab', 'Frenzied Blows', 'Great Cleave',
+    'Rending Blow', 'Shatter Strike', 'Skyward Sword', 'Concussive Strike', 'Flee', 'Scan', 'FUS RO DAH', 'Orbital Friendship Cannon'];
+const SPELLS_SUPPORT = ['Cure', 'Full-Cure', 'Regen', 'Haste', 'Protection', 'Absorb', 'Shadow Veil', 'Spark of Life', 'Spirit Shield', 'Heartseeker', 'Arcane Focus'];
+const ITEMS = ['Mystic Gem', 'Health Gem', 'Health Draught', 'Health Potion', 'Health Elixir', 'Mana Gem', 'Mana Draught', 'Mana Potion', 'Mana Elixir',
+    'Spirit Gem', 'Spirit Draught', 'Spirit Potion', 'Spirit Elixir', 'Last Elixir', 'Infusion of Flames', 'Infusion of Frost', 'Infusion of Storms', 'Infusion of Lightning',
+    'Infusion of Divinity', 'Infusion of Darkness',    'Scroll of Swiftness', 'Scroll of Protection', 'Scroll of the Avatar', 'Scroll of Absorption', 'Scroll of Shadows',
+    'Scroll of Life', 'Scroll of the Gods',    'Caffeinated Candy', 'Energy Drink', 'Flower Vase', 'Bubble-Gum'];
+const SPELLS_DAMAGE = ['T1', 'T2', 'T3', 'Fiery Blast', 'Inferno', 'Flames of Loki', 'Freeze', 'Blizzard', 'Fimbulvetr', 'Gale', 'Downburst', 'Storms of Njord',
+    'Shockblast', 'Chained Lightning', 'Wrath of Thor', 'Smite', 'Banishment', 'Paradise Lost', 'Corruption', 'Disintegrate', 'Ragnarok'];
+const SPELLS_DEBUFF = ['Drain', 'Weaken', 'Imperil', 'Slow', 'Sleep', 'Confuse', 'Blind', 'Silence', 'MagNet', 'Immobilize'];
+
+const CTRLWIDGET_FIELDS = [
+    { id: 'isActiveBattle', get: () => isActiveBattle ? t('cW.auto') : t('cW.manual') },
+    { id: 'readyNext', get: () => readyNext },
+    { id: 'networkDelay', get: () => (lastLogTimestamp > lastActionTimestamp ? lastLogTimestamp - lastActionTimestamp : '-') },
+    { id: 'battleStyle', get: () => t(`cW.${battleStyle}`) + (/Staff|Mage/.test(battleStyle) ? ` (${t(`cW.${spellDamageBonus.maxType}`)})` : '') },
+    { id: 'battleType', get: () => t(`cW.${battleType}`) + (towerFloor ? ` (${towerFloor}F)` : '') },
+    { id: 'round', get: () => roundInfo.total ? `${roundInfo.current} / ${roundInfo.total}` : '-' },
+].map(f => ({ ...f, label: `cW.${f.id}` }));
+const COMBAT_FIELDS = [
+    { id: 'fire', type: 'damage' },
+    { id: 'cold', type: 'damage' },
+    { id: 'wind', type: 'damage' },
+    { id: 'elec', type: 'damage' },
+    { id: 'holy', type: 'damage' },
+    { id: 'dark', type: 'damage' },
+    { id: 'crushing', type: 'damage' },
+    { id: 'slashing', type: 'damage' },
+    { id: 'piercing', type: 'damage' },
+    { id: 'void', type: 'damage' },
+    { id: 'damagePlus', type: 'damage' },
+    { id: 'damageTotal', type: 'damage', isTotal: true },
+
+    { id: 'glance', type: 'result' },
+    { id: 'hit', type: 'result' },
+    { id: 'crit', type: 'result' },
+    { id: 'miss', type: 'result' },
+    { id: 'evade', type: 'result' },
+    { id: 'parry', type: 'result' },
+    { id: 'resist', type: 'result' },
+    { id: 'block', type: 'result' },
+    { id: 'resultTotal', type: 'result', isTotal: true },
+
+    { id: 'resist50', type: 'resultPartially' },
+    { id: 'resist75', type: 'resultPartially' },
+    { id: 'resist90', type: 'resultPartially' },
+    { id: 'parryPartially', type: 'resultPartially' },
+    { id: 'resistPartially', type: 'resultPartially' },
+    { id: 'blockPartially', type: 'resultPartially' },
+    { id: 'resultPartiallyTotal', type: 'resultPartially', isTotal: true },
+].map(f => ({ ...f, label: `cP.${f.id}` }));
+const COMBAT_USE_FIELDS = [
+    { id: 'action', keys: ['Attack', ...TOGGLE] },
+    { id: 'item', keys: ['Mystic Gem', 'Health Gem', 'Mana Gem', 'Spirit Gem', 'Caffeinated Candy', 'Energy Drink'] },
+    { id: 'skill', keys: SKILLS },
+    { id: 'spellSupport', keys: SPELLS_SUPPORT },
+    { id: 'spellDamage', keys: SPELLS_DAMAGE },
+    { id: 'spellDebuff', keys: SPELLS_DEBUFF },
+].map(f => ({ ...f, label: `cP.${f.id}`, keys: f.keys.map(key => ({ key, label: `cB.${key}`})) }));
+const REVENUE_FIELDS = [
+    { id: 'exp', type: 'simple' },
+    { id: 'proficiency', type: 'list_paired',
+        order: [
+            'one-handed weapon', 'two-handed weapon', 'dual wielding', /*isekai911*/'dual-wielding',/*isekai912*/ 'staff',
+            'cloth armor', 'light armor', 'heavy armor', 'elemental magic', 'divine magic', 'forbidden magic', 'supportive magic', 'deprecating magic'
+        ]
+    },
+    { id: 'credit', type: 'simple' },
+    { id: 'equipment', type: 'list_flat', order: ['Peerless', 'Legendary', 'Magnificent', 'Exquisite', 'Superior', 'Average', 'Fair', 'Crude'] },
+    { id: 'material', type: 'grid',
+        order: [
+            'Low-Grade Cloth', 'Mid-Grade Cloth', 'High-Grade Cloth',
+            'Low-Grade Leather', 'Mid-Grade Leather', 'High-Grade Leather',
+            'Low-Grade Metals', 'Mid-Grade Metals', 'High-Grade Metals',
+            'Low-Grade Wood', 'Mid-Grade Wood', 'High-Grade Wood',
+            'Scrap Cloth', 'Scrap Leather', 'Scrap Metal', 'Scrap Wood', 'Energy Cell',
+        ]
+    },
+    { id: 'consumable', type: 'grid_detailed',
+        order: [
+            'Health Draught', 'Health Potion', 'Health Elixir',
+            'Mana Draught', 'Mana Potion', 'Mana Elixir',
+            'Spirit Draught', 'Spirit Potion', 'Spirit Elixir', 'Last Elixir',
+            'Infusion of Flames', 'Infusion of Frost', 'Infusion of Storms', 'Infusion of Lightning', 'Infusion of Divinity', 'Infusion of Darkness',
+            'Scroll of Swiftness', 'Scroll of Protection', 'Scroll of the Avatar', 'Scroll of Absorption', 'Scroll of Shadows', 'Scroll of Life', 'Scroll of the Gods',
+            'Voidseeker Shard', 'Aether Shard', 'Featherweight Shard', 'Amnesia Shard', 'World Seed',
+            'Flower Vase', 'Bubble-Gum'
+        ]
+    },
+    { id: 'consumableProfit', type: 'simple', source: 'consumable', key: 'profit' },
+    { id: 'token', type: 'grid', order: ['Token of Blood', 'Chaos Token', 'Soul Fragment'] },
+    { id: 'tokenProfit', type: 'simple', source: 'token', key: 'profit' },
+    { id: 'food', type: 'grid', order: ['Monster Chow', 'Monster Edibles', 'Monster Cuisine', 'Happy Pills'] },
+    { id: 'foodProfit', type: 'simple', source: 'food', key: 'profit' },
+    { id: 'figurine', type: 'grid',
+        order: [
+            'Twilight Sparkle Figurine', 'Rainbow Dash Figurine', 'Applejack Figurine', 'Fluttershy Figurine', 'Pinkie Pie Figurine', 'Rarity Figurine',
+            'Trixie Figurine', 'Princess Celestia Figurine', 'Princess Luna Figurine', 'Apple Bloom Figurine', 'Scootaloo Figurine', 'Sweetie Belle Figurine',
+            'Big Macintosh Figurine', 'Spitfire Figurine', 'Derpy Hooves Figurine', 'Lyra Heartstrings Figurine', 'Octavia Figurine', 'Zecora Figurine',
+            'Cheerilee Figurine', 'Vinyl Scratch Figurine', 'Daring Do Figurine', 'Doctor Whooves Figurine', 'Berry Punch Figurine', 'Bon-Bon Figurine',
+            'Fluffle Puff Figurine', 'Angel Bunny Figurine', 'Gummy Figurine',
+        ]
+    },
+    { id: 'figurineProfit', type: 'simple', source: 'figurine', key: 'profit' },
+    { id: 'artifact', type: 'grid', order: ['Precursor Artifact'] },
+    { id: 'artifactProfit', type: 'simple', source: 'artifact', key: 'profit' },
+    { id: 'trophy', type: 'grid',
+        order: [
+            'ManBearPig Tail', 'Holy Hand Grenade of Antioch', "Mithra's Flower", 'Dalek Voicebox', 'Lock of Blue Hair',
+            'Bunny-Girl Costume', 'Hinamatsuri Doll', 'Broken Glasses', 'Black T-Shirt', 'Sapling', 'Unicorn Horn', 'Noodly Appendage',
+        ]
+    },
+    { id: 'trophyProfit', type: 'simple', source: 'trophy', key: 'profit' },
+    { id: 'crystal', type: 'grid',
+        order: [
+            'Crystal of Vigor', 'Crystal of Finesse', 'Crystal of Swiftness', 'Crystal of Fortitude', 'Crystal of Cunning', 'Crystal of Knowledge',
+            'Crystal of Flames', 'Crystal of Frost', 'Crystal of Tempest', 'Crystal of Lightning', 'Crystal of Devotion', 'Crystal of Corruption',
+        ]
+    },
+    { id: 'crystalTotal', type: 'total', source: 'crystal' },
+    { id: 'totalProfit', type: 'summary' },
+    { id: 'stamina', type: 'stamina' },
+    { id: 'finalProfit', type: 'summary' }
+].map(f => ({ ...f, label: `rP.${f.id}` }));
+const STATS_FILTERS = [
+	{ id: 'filter-aggregate', key: 'aggregate', type: 'checkbox', options: ['Aggregate by Day'] },
+	{ id: 'filter-world', key: 'world', type: 'checkbox', options: ['Persistent', 'Isekai'] },
+	{ id: 'filter-battleType', key: 'battleType', type: 'checkbox', options: ['Arena', 'Encounter', 'Colosseum', 'Battle1000', 'Item', 'Tower'] },
+	{ id: 'filter-difficulties', key: 'difficulties', type: 'checkbox', options: ['20', '15', '10', '7', '4', '2', '1'] },
+	{ id: 'filter-result', key: 'result', type: 'checkbox', options: ['Victory', 'Defeat', 'Flee'] },
+	{ id: 'filter-roundTotal', key: 'roundTotal', type: 'rangeNumber', value: [0, 1000] },
+	{ id: 'filter-rows', key: 'rows', type: 'number', value: 50 }
+].map(f => ({ ...f, label: `sP.${f.key}` }));
+const sumRevenueCategory = (record, category) => {
+    let data = record.revenueRecords?.[category];
+    if (!data) return '0';
+    let total = 0;
+    for (const [key, value] of Object.entries(data)) {
+        if (key !== 'total' && key !== 'profit') total += value;
+    }
+    return Math.round(total * 100) / 100;
+};
+const sumTrophies = (record, type) => {
+    let data = record.revenueRecords?.trophy;
+    if (!data) return '0';
+
+    const TROPHIES_T2 = ['ManBearPig Tail', 'Holy Hand Grenade of Antioch', "Mithra's Flower", 'Dalek Voicebox', 'Lock of Blue Hair'];
+    let total = 0;
+    for (const [key, value] of Object.entries(data)) {
+        if (key === 'total' || key === 'profit') continue;
+        let isLesser = key.match(/Lesser .+ Charm/);
+        let isGreater = key.match(/Greater .+ Charm/);
+        let isT2 = TROPHIES_T2.includes(key);
+        switch (type) {
+            case 'lesserCharm':
+                if (isLesser) total += value;
+                break;
+            case 'greaterCharm':
+                if (isGreater) total += value;
+                break;
+            case 'T2':
+                if (isT2) total += value;
+                break;
+            case 'T36':
+                if (!isT2 && !isLesser && !isGreater) total += value;
+                break;
+        }
+    }
+    return total;
+};
+const getConsumable = (record, field) => {
+    let item = record.revenueRecords?.consumable?.[field];
+    if (!item) return { drop: 0, use: 0, balance: 0 };
+    return { drop: item.drop || 0, use: item.use || 0, balance: item.balance || 0 };
+};
+const STATS_FIELDS = [
+    { id: 'date', get: d => d.date || '' },
+    { id: 'world', style: 'min-width: 60px;', get: d => d.world || '', doI18n: true },
+    { id: 'level', get: d => d.playerLevel || '' },
+    { id: 'persona', style: 'min-width: 150px;', get: d => d.persona || '' },
+    { id: 'battleType', get: d => d.battleType === 'Tower' ? `Tower (${d.towerFloor}F)` : (d.battleType || ''), doI18n: true },
+    { id: 'round', get: d => d.roundInfo?.current || '' },
+    { id: 'deltaTime', get: d => d.deltaTime || '' },
+    { id: 'turns', style: 'min-width: 60px;', get: d => d.turns || '' },
+    { id: 'tps', get: d => d.tps || '' },
+    { id: 'finalProfit', get: d => d.revenueRecords?.finalProfit || 0 },
+    { id: 'credit', get: d => d.revenueRecords?.credit || 0 },
+    { id: 'staminaCost', get: d => d.revenueRecords?.staminaCost || 0 },
+    { id: 'totalProfit', get: d => d.revenueRecords?.totalProfit || 0 },
+
+    { id: 'pDGlance', get: d => d.combatRecords?.physicalDealt?.glance || 0 },
+    { id: 'pDHit', get: d => d.combatRecords?.physicalDealt?.hit || 0 },
+    { id: 'pDCrit', get: d => d.combatRecords?.physicalDealt?.crit || 0 },
+    { id: 'mDGlance', get: d => d.combatRecords?.magicalDealt?.glance || 0 },
+    { id: 'mDHit', get: d => d.combatRecords?.magicalDealt?.hit || 0 },
+    { id: 'mDCrit', get: d => d.combatRecords?.magicalDealt?.crit || 0 },
+    { id: 'mDRes', get: d => d.combatRecords?.magicalDealt?.resist || 0 },
+    { id: 'mDRes50', get: d => d.combatRecords?.magicalDealt?.resist50 || 0 },
+    { id: 'mDRes75', get: d => d.combatRecords?.magicalDealt?.resist75 || 0 },
+    { id: 'mDRes90', get: d => d.combatRecords?.magicalDealt?.resist90 || 0 },
+    { id: 'mDResP', get: d => d.combatRecords?.magicalDealt?.resistPartially || 0 },
+    { id: 'mDDRes0', get: d => d.combatRecords?.magicalDealt?.debuffResist0 || 0 },
+    { id: 'mDDRes12', get: d => d.combatRecords?.magicalDealt?.debuffResist1 || 0 },
+    { id: 'mDDRes3', get: d => d.combatRecords?.magicalDealt?.debuffResist3 || 0 },
+
+    { id: 'uCure', get: d => d.combatRecords?.use?.Cure || 0 },
+    { id: 'uFullCure', get: d => d.combatRecords?.use?.['Full-Cure'] || 0 },
+    { id: 'uCloakOfTheFallen', get: d => d.combatRecords?.use?.['Cloak of the Fallen'] || 0 },
+    { id: 'uImperil', get: d => d.combatRecords?.use?.Imperil || 0 },
+
+    { id: 'eqP', get: d => d.revenueRecords?.equipment?.Peerless?.length || 0 },
+    { id: 'eqL', get: d => d.revenueRecords?.equipment?.Legendary?.length || 0 },
+    { id: 'eqM', get: d => d.revenueRecords?.equipment?.Magnificent?.length || 0 },
+    { id: 'cha', get: d => d.revenueRecords?.token?.['Chaos Token'] || 0 },
+    { id: 'blo', get: d => d.revenueRecords?.token?.['Token of Blood'] || 0 },
+
+    { id: 'food', get: d => sumRevenueCategory(d, 'food') },
+    { id: 'fig', get: d => sumRevenueCategory(d, 'figurine') },
+    { id: 'arti', get: d => sumRevenueCategory(d, 'artifact') },
+    { id: 'crys', get: d => sumRevenueCategory(d, 'crystal') },
+
+    { id: 't2', get: d => sumTrophies(d, 'T2') },
+    { id: 't36', get: d => sumTrophies(d, 'T36') },
+    { id: 'lCharm', get: d => sumTrophies(d, 'lesserCharm') },
+    { id: 'gCharm', get: d => sumTrophies(d, 'greaterCharm') },
+
+    { id: 'seed', get: d => getConsumable(d, 'World Seed') },
+    { id: 'hd', get: d => getConsumable(d, 'Health Draught') },
+    { id: 'md', get: d => getConsumable(d, 'Mana Draught') },
+    { id: 'sd', get: d => getConsumable(d, 'Spirit Draught') },
+    { id: 'hp', get: d => getConsumable(d, 'Health Potion') },
+    { id: 'mp', get: d => getConsumable(d, 'Mana Potion') },
+    { id: 'sp', get: d => getConsumable(d, 'Spirit Potion') },
+    { id: 'he', get: d => getConsumable(d, 'Health Elixir') },
+    { id: 'me', get: d => getConsumable(d, 'Mana Elixir') },
+    { id: 'se', get: d => getConsumable(d, 'Spirit Elixir') },
+    { id: 'le', get: d => getConsumable(d, 'Last Elixir') },
+    { id: 'swif', get: d => getConsumable(d, 'Scroll of Swiftness') },
+    { id: 'prot', get: d => getConsumable(d, 'Scroll of Protection') },
+    { id: 'avat', get: d => getConsumable(d, 'Scroll of the Avatar') },
+    { id: 'abso', get: d => getConsumable(d, 'Scroll of Absorption') },
+    { id: 'shad', get: d => getConsumable(d, 'Scroll of Shadows') },
+    { id: 'life', get: d => getConsumable(d, 'Scroll of Life') },
+    { id: 'gods', get: d => getConsumable(d, 'Scroll of the Gods') },
+].map(f => ({ ...f, label: `sP.${f.id}` }));
+
+const KEYBINDS = {
+    openBattleRecords: { key: 'z', ctrl: false, alt: false, shift: false },
+    toggleActive: { key: 'm', ctrl: false, alt: false, shift: false },
+    openSettings: { key: ',', ctrl: false, alt: false, shift: false }
+};
+let userKeybinds = JSON.parse(localStorage.getItem(prefix + 'userKeybinds' + isekaiSuffix)) || { ...KEYBINDS };
+let idCounter = 0;
+const mkF = (key, type, extra = {}) => {
+    const { prefix = 'cB.', label, ...otherExtra } = extra;
+    const field = {
+        key,
+        type,
+        label: label || (type === 'constant' ? `${prefix}${extra.value || key}` : `${prefix}${key}`),
+        ...otherExtra
+    };
+
+    ['options', 'multiSelectOptions'].forEach(opts => {
+        if (type !== 'conditionsArray' && Array.isArray(field[opts])) field[opts] = field[opts].map(opt => ({ value: opt, label: `${prefix}${opt}` }));
+    });
+
+    return field;
+};
+const mkItem = (type, nameList = null, extra = [], useGeneral = true, useTarget = false) => {
+    const properties = [mkF('type', 'constant', { value: type, class: 'heading' })];
+
+    if (nameList) properties.push(mkF('name', 'dropdown', { options: nameList }));
+    if (extra.length > 0) properties.push(...extra.map(item => mkF(item.key, item.type, { ...item })));
+
+    let conds = [];
+    if (useGeneral) conds = conds.concat(conditionsGeneral);
+    if (useTarget) conds = conds.concat(conditionsTarget);
+    if (conds.length > 0) properties.push(mkF('conditions', 'conditionsArray', { options: conds }));
+
+    return { type: 'object', properties };
+};
+const conditionsGeneral = [
+    mkF('world', 'array', { multiSelectOptions: ['Persistent', 'Isekai'], itemSchema: { type: 'text' } }),
+    mkF('pLevel', 'rangeNumber'),
+    mkF('battleTypes', 'array', { multiSelectOptions: BATTLE_TYPES, popup: true, itemSchema: { type: 'text' } }),
+    mkF('difficulty', 'array', { multiSelectOptions: Object.keys(difficultyMap), popup: true, itemSchema: { type: 'text' } }),
+    mkF('roundCurrent', 'rangeNumber'),
+    mkF('roundLeft', 'rangeNumber'),
+    mkF('roundTotal', 'rangeNumber'),
+    mkF('floor', 'rangeNumber'),
+    mkF('pActionCooldown', 'array', { multiSelectOptions: [
+        ...SKILLS, ...SPELLS_SUPPORT, ...ITEMS, ...SPELLS_DAMAGE, ...SPELLS_DEBUFF,
+    ], hasRange: 'cB.cooldownRange', popup: true, itemSchema: { type: 'text' } }),
+    mkF('pActionCounts', 'array', { multiSelectOptions: [
+        'Attack', ...TOGGLE, ...SKILLS, ...SPELLS_SUPPORT, ...ITEMS, ...SPELLS_DAMAGE, ...SPELLS_DEBUFF,
+    ], hasRange: 'cB.usesPerRoundRange', popup: true, itemSchema: { type: 'text' } }),
+    mkF('pHP', 'rangeNumber'),
+    mkF('pMP', 'rangeNumber'),
+    mkF('pSP', 'rangeNumber'),
+    mkF('pOC', 'rangeNumber'),
+    mkF('pSpiritStatus', 'boolean'),
+    mkF('pEffects', 'array', { multiSelectOptions: PLAYER_EFFECTS, hasRange: 'cB.remainingTurnsRange', popup: true, itemSchema: { type: 'text' } }),
+    mkF('pIgnoredEffects', 'array', { multiSelectOptions: PLAYER_EFFECTS, hasRange: 'cB.remainingTurnsRange', popup: true, itemSchema: { type: 'text' } }),
+    mkF('pEffectStacks', 'array', { multiSelectOptions: PLAYER_EFFECTS, hasRange: 'cB.stacksRange', popup: true, itemSchema: { type: 'text' } }),
+    mkF('monsters', 'rangeNumber'),
+    mkF('activeMonsters', 'rangeNumber'),
+    mkF('defeatedMonsters', 'rangeNumber'),
+    mkF('bosses', 'rangeNumber'),
+    mkF('activeBosses', 'rangeNumber'),
+    mkF('defeatedBosses', 'rangeNumber'),
+    mkF('mWithoutEffects', 'array', { multiSelectOptions: Object.keys(effectSrc), hasRange: 'cB.monsterCountRange', popup: true, itemSchema: { type: 'text' } }),
+];
+const conditionsTarget = [
+    mkF('tName', 'text'),
+    mkF('tTypes', 'array', { multiSelectOptions: MONSTER_TYPES, popup: true, itemSchema: { type: 'text' } }),
+    mkF('tClasses', 'array', { multiSelectOptions: MONSTER_CLASSES, popup: true, itemSchema: { type: 'text' } }),
+    mkF('tPowerLevel', 'rangeNumber'),
+    mkF('tIndex', 'rangeNumber'),
+    mkF('tHP', 'rangeNumber'),
+    mkF('tEffects', 'array', { multiSelectOptions: Object.keys(effectSrc), hasRange: 'cB.remainingTurnsRange', popup: true, itemSchema: { type: 'text' } }),
+    mkF('tIgnoredEffects', 'array', { multiSelectOptions: Object.keys(effectSrc), hasRange: 'cB.remainingTurnsRange', popup: true, itemSchema: { type: 'text' } }),
+    mkF('tEffectStacks', 'array', { multiSelectOptions: Object.keys(effectSrc), hasRange: 'cB.stacksRange', popup: true, itemSchema: { type: 'text' } }),
+    mkF('tDaysSinceUpdate', 'rangeNumber'),
+].map(f => ({
+    ...f,
+    extraFields: [
+        { key: 'offset', type: 'rangeNumber' },
+        { key: 'matched', type: 'rangeNumber', defaultValue: [1, 1] },
+    ].map(ef => ({ ...ef, label: `cB.${ef.key}` }))
+}));
+const cfgBattleSchema = {
+    type: 'object',
+    properties: [
+        mkF('basic', 'heading', { class: 'heading' }),
+        mkF('advanceToNextRound', 'boolean'),
+        mkF('ajaxRound', 'boolean'),
+        mkF('showCooldowns', 'boolean'),
+        mkF('quickbarExtend', 'array', { itemSchema: { type: 'text' } }),
+        mkF('showDurations', 'boolean'),
+        mkF('showRealTimeProficiency', 'boolean'),
+        mkF('showMonsterIndex', 'boolean'),
+        mkF('showMonsterInfo', 'boolean'),
+        mkF('showMonsterHP', 'boolean'),
+        mkF('recordBattleLog', 'boolean'),
+        mkF('dailyStaminaQuotaPlus', 'number'),
+        mkF('ctrlWidgetStyleText', 'text', { placeholder: 'opacity: 0.75;' }),
+        mkF('ctrlWidgetMouseEnter', 'boolean'),
+        mkF('ctrlWidgetRows', 'fieldPicker', {
+            prefix: 'cW.',
+            size: 8,
+            allFields: CTRLWIDGET_FIELDS,
+        }),
+
+        mkF('battleModeSettings', 'heading', { class: 'heading' }),
+        {
+            key: 'modes', type: 'dropdown', label: 'cB.modes',
+            hasModeDropdown: 'battleMode',
+            options: BATTLE_MODES.map(key => ({ value: key, label: `cB.${key}` })),
+            itemSchema: {
+                type: 'object',
+                properties: [
+                    mkF('keyBindings', 'keyBasedObjectArray', {
+                        class: 'heading',
+                        canDisable: true,
+                        flatten: true,
+                        itemSchema: {
+                            type: 'object',
+                            discriminator: 'type',
+                            oneOf: {
+                                target: mkItem('target', null, [{ key: 'priorityRule', type: 'dropdown', options: PRIORITY_RULES }], true, true),
+                                spellSupport: mkItem('spellSupport', SPELLS_SUPPORT, true, true),
+                                item: mkItem('item', ITEMS, true, true),
+                                toggle: mkItem('toggle', TOGGLE, [{ key: 'toggled', type: 'boolean' }], true, true),
+                                stop: mkItem('stop', null, [{ key: 'customMessage', type: 'text' }]),
+                                smartDebuff: mkItem('smartDebuff', SPELLS_DEBUFF, [
+                                    { key: 'targetCount', type: 'dropdown', options: [3, 2, 1] },
+                                    { key: 'bottomUp', type: 'boolean' },
+                                    { key: 'tailSkip', type: 'number' },
+                                    { key: 'maxAtFirst', type: 'number' },
+                                    { key: 'minMonstersLeft', type: 'number' }
+                                ], true, true),
+                                spellDebuff: mkItem('spellDebuff', SPELLS_DEBUFF, [], true, true),
+                                spellDamage: mkItem('spellDamage', SPELLS_DAMAGE, [], true, true),
+                                skill: mkItem('skill', SKILLS, [], true, true),
+                                normalAttack: mkItem('normalAttack', null, [], false, false),
+                            }
+                        }
+                    }),
+                    mkF('supports', 'array', {
+                        class: 'heading',
+                        canDisable: true,
+                        itemSchema: {
+                            type: 'object',
+                            discriminator: 'type',
+                            oneOf: {
+                                spellSupport: mkItem('spellSupport', SPELLS_SUPPORT, true, true),
+                                item: mkItem('item', ITEMS, true, true),
+                                toggle: mkItem('toggle', TOGGLE, [{ key: 'toggled', type: 'boolean' }]),
+                                stop: mkItem('stop', null, [{ key: 'customMessage', type: 'text' }]),
+                            }
+                        }
+                    }),
+                    mkF('attacks', 'array', {
+                        class: 'heading',
+                        canDisable: true,
+                        itemSchema: {
+                            type: 'object',
+                            discriminator: 'type',
+                            oneOf: {
+                                target: mkItem('target', null, [{ key: 'priorityRule', type: 'dropdown', options: PRIORITY_RULES }], true, true),
+                                toggle: mkItem('toggle', TOGGLE, [{ key: 'toggled', type: 'boolean' }], true, true),
+                                smartDebuff: mkItem('smartDebuff', SPELLS_DEBUFF, [
+                                    { key: 'targetCount', type: 'dropdown', options: [3, 2, 1] },
+                                    { key: 'bottomUp', type: 'boolean' },
+                                    { key: 'tailSkip', type: 'number' },
+                                    { key: 'maxAtFirst', type: 'number' },
+                                    { key: 'minMonstersLeft', type: 'number' }
+                                ], true, true),
+                                spellDebuff: mkItem('spellDebuff', SPELLS_DEBUFF, [], true, true),
+                                spellDamage: mkItem('spellDamage', SPELLS_DAMAGE, [], true, true),
+                                skill: mkItem('skill', SKILLS, [], true, true),
+                                normalAttack: mkItem('normalAttack', null, [], false, false),
+                            }
+                        }
+                    })
+                ]
+            }
+        }
+    ]
+};
+const cfgStatsSchema = {
+    type: 'object',
+    properties: [
+        mkF('basic', 'heading', { class: 'heading', prefix: 'cS.' }),
+        mkF('darkMode', 'boolean', { prefix: 'cS.' }),
+        mkF('combatRows', 'fieldPicker', {
+            prefix: 'cS.',
+            size: 16,
+            allFields: COMBAT_FIELDS,
+            editFields: [
+                { key: 's_pd' },
+                { key: 's_md' },
+                { key: 's_td' },
+                { key: 's_pt' },
+                { key: 's_ps' },
+                { key: 's_mt' },
+                { key: 's_ms' },
+                { key: 's_tt' },
+            ].map(f => ({ ...f, label: `cS.${f.key}`, placeholder: 'background-color: red' })),
+        }),
+        mkF('revenueRows', 'fieldPicker', {
+            prefix: 'cS.',
+            size: 16,
+            allFields: REVENUE_FIELDS,
+            editFields: [
+                { key: 'styleText', label: 'cS.styleText', placeholder: 'color: red;' },
+            ],
+        }),
+        mkF('statsColumns', 'fieldPicker', {
+            prefix: 'cS.',
+            size: 16,
+            allFields: STATS_FIELDS,
+            editFields: [
+                { key: 'customName', label: 'cS.customName' },
+                { key: 'styleText', label: 'cS.styleText', placeholder: 'color: red;' },
+                { key: 'colorThresholds', label: 'cS.colorThresholds', placeholder: '500:#c31dcf, 1000:red' },
+            ],
+        }),
+    ]
+};
+
+let spellCooldowns;
+let itemCooldowns;
+let vitals;
+let spiritStatus = false;
+let playerEffectsObj;
+let monstersObj;
+let conditionsObj;
+
+const I18N = {
+    cW: {
+        ctrlWidgetRows: 'ctrlWidget Rows',
+        isActiveBattle: 'Active',
+        OneHanded: 'OneHanded', '1H_Mage': '1H Mage', TwoHanded: 'TwoHanded', '2H_Mage': '2H Mage',
+        DualWielding: 'DualWielding', DW_Mage: 'DW Mage', NitenIchiryu: 'NitenIchiryu', NI_Mage: 'NI Mage',
+    },
+    cB: {
+        advanceToNextRound: 'Auto advance to next round',
+        ajaxRound: 'Enable AJAX for advancing to the next round. Disable it if other scripts donâ€™t support it.',
+        showCooldowns: 'Show cooldowns (show cooldowns on the quickbar)',
+        quickbarExtend: 'Quickbar extend (ikey_p, Health Draught, Heartseeker...)',
+        showDurations: 'Show effect durations (show effect durations)',
+        showRealTimeProficiency: 'Show real-time proficiency (show live proficiency gains during battle)',
+        showMonsterIndex: 'Show monster index',
+        showMonsterInfo: '(Monster DB script required) Show monster information, includes class, attack type, and power level',
+        showMonsterHP: 'Show monster HP (display current and max hp of monsters)',
+        recordBattleLog: 'Record battle log (records the raw battle log, such as: "Monster hits you for 10 holy damage.", "You use a Mana Potion.")',
+        dailyStaminaQuotaPlus: 'Daily stamina quota plus',
+        ctrlWidgetStyleText: 'Control Widget style text',
+        ctrlWidgetMouseEnter: 'Listen for mouse enter event on Control Widget',
+
+        battleModeSettings: 'Battle Mode Settings',
+
+        keyBindings: 'Key Bindings', duplicateKeys: 'Key already exists!', addNewKeyBinding: 'Add New Key Binding',
+
+        spellSupport: 'Spell Support', customMessage: 'Show custom message',
+
+        priorityRule: 'Priority Rule', smartDebuff: 'Smart Debuff', targetCount: 'Target Count', bottomUp: 'Bottom Up (process from monster J to A)',
+        tailSkip: 'Tail skip (skip the last N monsters if positive, or only target the first N monsters if negative',
+        maxAtFirst: 'Max casts if less than 2 monsters are defeated',
+        minMonstersLeft: 'Monsters left threshold for infinite casting', spellDebuff: 'Spell Debuff', spellDamage: 'Spell Damage', normalAttack: 'Normal Attack',
+
+        pLevel: 'Player Level Range', battleTypes: 'Battle Types',
+        roundCurrent: 'Current Round Range', roundLeft: 'Round Left Range', roundTotal: 'Total Round Range', floor: 'Floor Range',
+        pActionCooldown: 'Player Action Cooldown Range', pActionCounts: 'Player Action Counts Range',
+        pHP: 'Player HP Percent Range', pMP: 'Player MP Percent Range', pSP: 'Player SP Percent Range', pOC: 'Player OC Percent Range',
+        pSpiritStatus: 'Player Spirit Status', pEffects: 'Player Effects', pIgnoredEffects: 'Player Ignored Effects', pEffectStacks: 'Player Effect Stacks',
+        monsters: 'Monsters Range', activeMonsters: 'Monsters Left Range', defeatedMonsters: 'Monsters Defeated Range',
+        bosses: 'Bosses Range', activeBosses: 'Bosses Left Range', defeatedBosses: 'Bosses Defeated Range',
+        mWithoutEffects: 'Monster without Effects Range',
+
+        offset: 'Target offset range', matched: 'Matched count range',
+        tName: 'Monster Name', tTypes: 'Monster Types', tClasses: 'Monster Classes', tPowerLevel: 'Monster Power Level Range', tIndex: 'Monster Index Range',
+        tHP: 'Monster HP Range', tEffects: 'Monster Effects', tIgnoredEffects: 'Monster Ignored Effects', tEffectStacks: 'Monster Effect Stacks', tDaysSinceUpdate: 'Monster Days Since Update Range',
+
+        'OneHanded_General': 'OneHanded-General', 'OneHanded_Tower': 'OneHanded-Tower', '1H_Mage_General': '1H Mage-General','TwoHanded_General': 'TwoHanded-General','2H_Mage_General': '2H Mage-General',
+        'DualWielding_General': 'DualWielding-General', 'DW_Mage_General': 'DW Mage-General', 'NitenIchiryu_General': 'NitenIchiryu-General', 'NI_Mage_General': 'NI Mage-General',
+        'Staff_General': 'Staff-General', 'Unarmed_General': 'Unarmed-General',
+    },
+    cS: {
+        s_pd: 'Physical Dealt Inline Style', s_md: 'Magical Dealt Inline Style', s_td: 'Total Dealt Inline Style', s_pt: 'Physical Taken Inline Style',
+        s_ps: 'Physical Taken Spirit Inline Style', s_mt: 'Magical Taken Inline Style', s_ms: 'Magical Taken Spirit Inline Style', s_tt: 'Total Taken Inline Style',
+        styleText: 'Inline Style',
+
+        exportDB: 'Export DB', importDB: 'Import DB',
+        importConfirm: 'Do you want to merge the imported data?\nPress OK to only add new records (Merge), or Cancel to overwrite existing data (Overwrite).',
+    },
+    tP: {
+        't/s': 't/s',
+    },
+    cP: {
+        damageDealt: 'Damage Dealt', damageTaken: 'Damage Taken',
+        damagePlus: 'Damage Plus', damageTotal: 'Damage Total',
+        resultTotal: 'Result Total',
+        resist50: 'Resist 50', resist75: 'Resist 75', resist90: 'Resist 90',
+        parryPartially: 'Partial Parry', resistPartially: 'Partial Resist', blockPartially: 'Partial Block', resultPartiallyTotal: 'Partial Total',
+        critStack: 'Crit Stacks', debuffResist: 'Debuff Resists', debuffResist0: 'Resist 0', 'debuffResist1-2': 'Resist 1-2', debuffResist3: 'Resist 3',
+        spellSupport: 'Supportive', spellDamage: 'Offensive', spellDebuff: 'Deprecating',
+    },
+    rP: {
+        unitPrice: 'Unit Price',
+        'dual-wielding': 'dual-wielding',
+        'staff': 'staff',
+    },
+    sP: {
+        'jpxStats': 'jpx Stats',
+
+		roundTotal: 'Total Round Range',
+
+        pDGlance: 'PDGlance', pDHit: 'PDHit', pDCrit: 'PDCrit', mDGlance: 'MDGlance', mDHit: 'MDHit', mDCrit: 'MDCrit',
+        mDRes: 'MDRes', mDRes50: 'MDRes50', mDRes75: 'MDRes75', mDRes90: 'MDRes90', mDResP: 'MDResP', mDDRes0: 'MDDRes0', mDDRes12: 'MDDRes12', mDDRes3: 'MDDRes3',
+
+        uCure: 'Cure', uFullCure: 'FCure', uCloakOfTheFallen: 'Spark', uImperil: 'Imp',
+        eqP: 'EqP', eqL: 'EqL', eqM: 'EqM',
+        lCharm: 'LCh', gCharm: 'GCh',
+        hd: 'HD', md: 'MD', sd: 'SD', hp: 'HP', mp: 'MP', sp: 'SP', he: 'HE', me: 'ME', se: 'SE', le: 'LE',
+    }
+};
+const mergedI18N = {};
+
+function initDo() {
+    let style = document.createElement('style');
+    style.id = 'jpx';
+    style.textContent = cfg.styleText;
+    document.head.appendChild(style);
+
+    window.addEventListener('beforeunload', storeTmp);
+    document.addEventListener('pointerdown', (e) => {
+        if (!e.target.closest('.multiSelect-popup-panel') && !e.target.classList.contains('multiSelect-summary')) {
+            document.querySelectorAll('.multiSelect-popup-panel').forEach(p => p.style.display = 'none');
+        }
+    });
+    const throttledActionManager = jpxUtils.throttle(actionManager, 75);
+    document.addEventListener('keydown', (e) => onKeyDown(e, throttledActionManager), true);
+
+    initDoI18n();
+
+    let queries = location.search.match(regExp.locationQueries) || [];
+    let queriesObj = Object.fromEntries(queries.map(
+        (query) => {
+            return query.split('=', 2);
+        }
+    ));
+    log = document.querySelector('#textlog');
+
+    //Battle
+    if (log && !doInitDoBattle) {
+        initDoBattle();
+        return;
+    }
+
+    //Riddle
+    if (document.querySelector('#riddlemaster')) {
+        riddleRecorder();
+        return;
+    }
+
+    //Lobby
+    if (!log) {
+        let difficulty = localStorage.getItem(prefix + 'difficulty' + isekaiSuffix) || 'undefined';
+        let playerLevel = parseInt(localStorage.getItem(prefix + 'playerLevel' + isekaiSuffix)) || 0;
+        let persona = localStorage.getItem(prefix + 'persona' + isekaiSuffix) || 'undefined';
+        let stamina = parseFloat(localStorage.getItem(prefix + 'stamina' + isekaiSuffix)) || 80;
+
+        if (queriesObj.s === 'Battle') {
+            let levelReadout = document.querySelector('#level_readout > div > div')?.innerText;
+            let playerInfo = levelReadout.match(regExp.playerInfo);
+            if (playerInfo) {
+                if (difficulty != playerInfo[1]) {
+                    localStorage.setItem(prefix + 'difficulty' + isekaiSuffix, playerInfo[1]);
+                }
+                if (playerLevel != playerInfo[1]) {
+                    localStorage.setItem(prefix + 'playerLevel' + isekaiSuffix, playerInfo[2]);
+                }
+            }
+            let staminaReadout = document.querySelector('#stamina_readout > div > div')?.innerText;
+            let staminaInfo = staminaReadout.match(regExp.staminaInfo)?.[1];
+            if (staminaInfo && stamina != staminaInfo) {
+                localStorage.setItem(prefix + 'stamina' + isekaiSuffix, staminaInfo);
+            }
+        }
+
+        let personaSelected = document.querySelector('#persona_form > select > option[selected]')?.innerText;
+        if (personaSelected && persona != personaSelected) {
+            localStorage.setItem(prefix + 'persona' + isekaiSuffix, personaSelected);
+        }
+
+        let spcArray = Array.from(document.querySelectorAll('.spc'));
+        let spellDamageBonus = spcArray.find(spc =>
+            spc.innerText.includes('Spell Damage Bonus') || jpxUtils.parseHVClasses(spc.querySelector('div')).includes('Spell Damage Bonus')
+        );
+        if (spellDamageBonus) {
+            if (!isekaiSuffix) {
+                let spellDamageBonusArray = Array.from(spellDamageBonus.nextElementSibling.children);
+                let maxValue = -Infinity;
+                let maxType = '';
+
+                for (let i = 0; i < spellDamageBonusArray.length; i += 2) {
+                    let value = parseFloat(spellDamageBonusArray[i].innerText || jpxUtils.parseHVClasses(spellDamageBonusArray[i].querySelector('div')));
+                    let spellsDamageType = (spellDamageBonusArray[i + 1].innerText || jpxUtils.parseHVClasses(spellDamageBonusArray[i + 1].querySelector('div'))).match(/[A-Za-z]+/)?.[0];
+
+                    if (value > maxValue) {
+                        maxValue = value;
+                        maxType = jpxUtils.lowerFirst(spellsDamageType);
+                    }
+                }
+
+                if (
+                    (maxType && spellDamageBonus.maxType != maxType) ||
+                    (maxValue > 0 && spellDamageBonus.maxValue != maxValue)
+                ){
+                    localStorage.setItem(prefix + 'spellDamageBonus' + isekaiSuffix, JSON.stringify({
+                        maxType: maxType,
+                        maxValue: maxValue,
+                    }));
+                }
+            /*isekai911*/
+            } else {
+                let table = spellDamageBonus.nextElementSibling;
+                let rows = table.querySelectorAll('tr');
+                let maxValue = -Infinity;
+                let maxType = "";
+
+                rows.forEach((tr) => {
+                    let tds = tr.querySelectorAll('td');
+                    if (tds.length < 2) {
+                        return;
+                    }
+
+                    let value = parseFloat(tds[0].textContent.trim());
+                    let spellsDamageType = tds[1].textContent.trim();
+
+                    if (value > maxValue) {
+                        maxValue = value;
+                        maxType = jpxUtils.lowerFirst(spellsDamageType);
+                    }
+                });
+
+                if (
+                    (maxType && spellDamageBonus.maxType != maxType) ||
+                    (maxValue > 0 && spellDamageBonus.maxValue != maxValue)
+                ) {
+                    localStorage.setItem(prefix + 'spellDamageBonus' + isekaiSuffix, JSON.stringify({
+                        maxType: maxType,
+                        maxValue: maxValue,
+                    }));
+                }
+            }
+            /*isekai912*/
+        }
+
+        return;
+    }
+}
+
+function initDoBattle() {
+    doInitDoBattle = true;
+    window.addEventListener('mousemove', () => {
+        if (!jpxPanelManager.ready) jpxPanelManager.ready = true;
+    });
+    document.addEventListener('DOMContentLoaded', reDoBattle);
+
+    let storedCfgBattle = {};
+    try {
+        storedCfgBattle = JSON.parse(localStorage.getItem(prefix + 'cfgBattle' + isekaiSuffix) || '{}');
+    } catch (err) {
+        console.error('Failed to load cfgBattle. Using default cfgBattle.');
+        console.error(err);
+        storedCfgBattle = {};
+    }
+    mergeCfg(storedCfgBattle, defaultCfgBattle, cfgBattle, 'battle');
+
+    if (cfgBattle.recordBattleLog) {
+        battleLogRecord = JSON.parse(localStorage.getItem(prefix + 'battleLogRecord' + isekaiSuffix) || '[]');
+    }
+    timeRecords = JSON.parse(localStorage.getItem(prefix + 'timeRecords' + isekaiSuffix) || '{}');
+    if (jpxUtils.isEmpty(timeRecords)) timeRecords = jpxUtils.createTimeRecords();
+    combatRecords = JSON.parse(localStorage.getItem(prefix + 'combatRecords' + isekaiSuffix) || '{}');
+    if (jpxUtils.isEmpty(combatRecords)) combatRecords = jpxUtils.createCombatRecords();
+    revenueRecords = JSON.parse(localStorage.getItem(prefix + 'revenueRecords' + isekaiSuffix) || '{}');
+    if (jpxUtils.isEmpty(revenueRecords)) revenueRecords = jpxUtils.createRevenueRecords();
+
+    //Battle Style
+    let {
+        spellCooldowns
+    } = getActionCooldowns();
+    let spells = Object.keys(spellCooldowns);
+    if (spells.includes('Shield Bash')) {
+        battleStyle = spellDamageBonus.maxValue <= 100 ? 'OneHanded' : '1H_Mage';
+    } else if (spells.includes('Great Cleave')) {
+        battleStyle = spellDamageBonus.maxValue <= 100 ? 'TwoHanded' : '2H_Mage';
+    } else if (spells.includes('Iris Strike')) {
+        battleStyle = spellDamageBonus.maxValue <= 100 ? 'DualWielding' : 'DW_Mage';
+    } else if (spells.includes('Skyward Sword')) {
+        battleStyle = spellDamageBonus.maxValue <= 100 ? 'NitenIchiryu' : 'NI_Mage';
+    } else if (spells.includes('Concussive Strike')) {
+        battleStyle = 'Staff';
+    } else {
+        battleStyle = 'Unarmed';
+    }
+
+    //Battle Type
+    let battleTypeLog = log.innerHTML.match(regExp.battleTypeLog);
+    if (battleTypeLog) {
+        if (battleTypeLog[1].includes('arena challenge') && !battleTypeLog[1].includes('Round 1 / 1)')) {
+            battleType = 'Arena';
+        } else if (battleTypeLog[1].includes('random encounter')) {
+            battleType = 'Encounter';
+        } else if (battleTypeLog[1].includes('arena challenge') && battleTypeLog[1].includes('Round 1 / 1)')) {
+            battleType = 'Colosseum';
+        } else if (battleTypeLog[1].includes('Grindfest')) {
+            battleType = 'Battle1000';
+        } else if (battleTypeLog[1].includes('Item World')) {
+            battleType = 'Item';
+        } else if (battleTypeLog[1].includes('The Tower')) {
+            battleType = 'Tower';
+            let floor = battleTypeLog[1].match(regExp.floor);
+            if (floor) {
+                towerFloor = floor[1];
+            }
+        }
+    }
+    if (battleType) {
+        localStorage.setItem(prefix + 'battleType' + isekaiSuffix, battleType);
+    } else {
+        battleType = localStorage.getItem(prefix + 'battleType' + isekaiSuffix) || '';
+    }
+
+    //Tower Floor
+    if (battleType === 'Tower') {
+        if (towerFloor) {
+            localStorage.setItem(prefix + 'towerFloor' + isekaiSuffix, towerFloor);
+        } else {
+            towerFloor = parseInt(localStorage.getItem(prefix + 'towerFloor' + isekaiSuffix)) || 0;
+        }
+    }
+
+    preDoBattle();
+}
+
+function reDoBattle() {
+    if (document.querySelector('#riddlemaster')) {
+        riddleRecorder();
+        return;
+    }
+
+    isActiveBattle = false;
+    if (cfgBattle.ctrlWidgetMouseEnter) jpxPanelManager.ready = false;
+    monsterData = [];
+    localStorage.removeItem(prefix + 'monsterData' + isekaiSuffix);
+    allMonsterInfo = {};
+    actionCounts = {};
+    monstersEffects = {};
+    log = document.querySelector('#textlog');
+    log && preDoBattle();
+    jpxPanelManager.setBackground('#fef');
+    jpxPanelManager.dispatchState();
+}
+
+function preDoBattle() {
+    //Round
+    let round = log.innerHTML.match(regExp.round);
+    let storedRoundInfo = JSON.parse(localStorage.getItem(prefix + 'roundInfo' + isekaiSuffix) || '{}');
+    if (battleType !== 'Encounter') {
+        if (round) {
+            roundInfo.current = +round[1];
+            roundInfo.total = +round[2];
+            localStorage.setItem(prefix + 'roundInfo' + isekaiSuffix, JSON.stringify(roundInfo));
+        } else {
+            roundInfo.current = storedRoundInfo.current || 0;
+            roundInfo.total = storedRoundInfo.total || 0;
+        }
+    }
+
+    //Proficiency Record
+    if (cfgBattle.showRealTimeProficiency) {
+        let proficiencyRecord = document.querySelector('#proficiency-record');
+        if (!proficiencyRecord) {
+            proficiencyRecord = document.createElement('table');
+            proficiencyRecord.id = 'proficiency-record';
+            document.querySelector('#csp').appendChild(proficiencyRecord);
+        }
+
+        let proficiencyKeys = Object.keys(revenueRecords.proficiency);
+        if (proficiencyKeys.length) {
+            let innerHTMLTemp = '';
+            let order = REVENUE_FIELDS.find(f => f.id === 'proficiency').order;
+            let sortedKeys = jpxUtils.getSortedKeys(order, proficiencyKeys);
+            for (const sortedKey of sortedKeys) {
+                let value = revenueRecords.proficiency[sortedKey];
+                if (value) innerHTMLTemp += `<tr><td>${Math.round(value * 1000) / 1000}</td><td>${t(`rP.${sortedKey}`)}</td></tr>`;
+            }
+            proficiencyRecord.innerHTML = `<tbody>${innerHTMLTemp}</tbody>`;
+        }
+    }
+
+    //Monster Data
+    let matches;
+    while ((matches = regExp.monster.exec(log.innerHTML)) !== null) {
+        monsterData.unshift({
+            id: +matches[1],
+            name: matches[2],
+            level: +matches[3],
+            maxHP: +matches[4],
+        });
+    }
+    let storedMonsterData = JSON.parse(localStorage[prefix + 'monsterData' + isekaiSuffix] || '[]');
+    if (monsterData.length) {
+        localStorage.setItem(prefix + 'monsterData' + isekaiSuffix, JSON.stringify(monsterData));
+    } else if (storedMonsterData) {
+        monsterData = storedMonsterData;
+    }
+
+    updateMonsterInfo();
+
+    //Riddle
+    if (log.textContent.includes('You gain the effect Blessing of the RiddleMaster.') && timeRecords.riddle.lastTurn !== timeRecords.turn) {
+        timeRecords.riddle.lastTurn = timeRecords.turn;
+        timeRecords.riddle.total += 1;
+    }
+
+    jpxPanelManager.createCtrlWidget('battle');
+
+    let throttledPreProcessLog = jpxUtils.throttle(preProcessLog, 200, true);
+    let obs = new MutationObserver(throttledPreProcessLog);
+    obs.observe(log.firstChild, { childList: true });
+
+    preRender();
+}
+
+function preProcessLog() {
+    lastActionTimestamp = lastLogTimestamp;
+    lastLogTimestamp = Date.now();
+
+    let td = Array.from(log.getElementsByTagName('td'));
+    for (let i = 0; i < td.length; i++) {
+        if (td[i].className == 'tls') td[i].innerHTML = '<hr>';
+    }
+
+    battleRecorder();
+
+    let btcp = document.querySelector('#btcp');
+    let finishBattle = document.querySelector('img[src$="finishbattle.png"]');
+    if (btcp) {
+        localStorage.removeItem(prefix + 'monsterData' + isekaiSuffix);
+
+        if (finishBattle) {
+            btcp.setAttribute('style', 'display: block; width: max-content; min-width: 380px; max-width: 530px; height: auto; min-height: 120px; max-height: 621px; overflow: auto;');
+
+            battleRecordPlayer();
+
+            localStorage.removeItem(prefix + 'battleLogRecord' + isekaiSuffix);
+            localStorage.removeItem(prefix + 'timeRecords' + isekaiSuffix);
+            localStorage.removeItem(prefix + 'combatRecords' + isekaiSuffix);
+            localStorage.removeItem(prefix + 'revenueRecords' + isekaiSuffix);
+
+            return;
+        }
+    }
+
+    preRender();
+}
+
+function preRender() {
+    ({ spellCooldowns, itemCooldowns } = getActionCooldowns(true));
+    vitals = getVitals();
+    spiritStatus = getSpiritStatus();
+    monstersObj = getMonsters(true);
+    conditionsObj = null;
+
+    let { monsters, activeMonsters } = monstersObj;
+
+    //Monster Effects
+    updateMonsterEffects();
+
+    //Player Effects and Render All
+    playerEffectsObj = getEffectDuration(cfgBattle.showDurations);
+
+    //Monster HP
+    if (cfgBattle.showMonsterHP) {
+        for (let i = 0; i < monsters.length; i++) {
+            if (!monsterData[i]) break;
+            if (monsters[i].hpPercentage) {
+                let maxHP = monsterData[i].maxHP;
+                let hpDiv = document.createElement('div');
+                hpDiv.className = 'monster-hp';
+                hpDiv.innerText = 'HP: ' + Math.round(maxHP * monsters[i].hpPercentage).toLocaleString() + ' / ' + maxHP.toLocaleString();
+                monsters[i].monster_btm1.appendChild(hpDiv);
+            }
+        }
+    }
+
+    jpxPanelManager.updateContent('battle');
+
+    goNext();
+}
+
+function goNext() {
+    if (isActiveBattle) {
+        jpxPanelManager.setBackground('#4f4');
+
+        //End of Round
+        let btcp = document.querySelector('#btcp');
+        let finishBattle = document.querySelector('img[src$="finishbattle.png"]');
+        if (!monstersObj.activeMonsters[0] || finishBattle) {
+            if (btcp && !finishBattle) {
+                if (cfgBattle.ajaxRound) {
+                    btcp.onclick = async function() {
+                        if (btcp.style.visibility === 'hidden') return;
+                        btcp.style.visibility = 'hidden';
+
+                        function bindRiddleForm(riddleform) {
+                            let submitting = false;
+                            let timer;
+
+                            riddleform.addEventListener('submit', e => {
+                                e.preventDefault();
+
+                                if (submitting) return;
+                                submitting = true;
+                                timer = setTimeout(() => { submitting = false; }, 10000);
+
+                                let formData = new FormData(riddleform);
+                                let submitBtn = document.querySelector('#riddlesubmit');
+                                if (submitBtn?.name) formData.append(submitBtn.name, submitBtn.value);
+
+                                fetch(riddleform.action || location.href, {
+                                    method: 'POST',
+                                    body: new URLSearchParams(formData),
+                                    headers: {
+                                        'Content-Type': 'application/x-www-form-urlencoded',
+                                        'Cache-Control': 'max-age=0',
+                                    },
+                                })
+                                .then(response => response.redirected ? location.href = response.url : response.text())
+                                .then(html => updateBattleMain(new DOMParser().parseFromString(html, 'text/html')))
+                                .catch(err => {
+                                    console.error('Submission failed: ', err);
+                                    jpxUtils.createToast('Submission failed: ' + err);
+                                })
+                                .finally(() => {
+                                    submitting = false;
+                                    clearTimeout(timer);
+                                });
+                            });
+                        }
+
+                        function updateBattleMain(doc) {
+                            let main = document.querySelector('#battle_main');
+                            let mainNew = doc.querySelector('#battle_main');
+
+                            document.querySelector('#riddle-panel')?.remove();
+                            clearInterval(window.timer);
+
+                            if (main && mainNew) {
+                                main.replaceWith(mainNew);
+                            } else {
+                                document.body.innerHTML = doc.body.innerHTML;
+                            }
+
+                            let t = setTimeout(() => {}, 0);
+                            for (let i = t; i > 0 && i > t - 100; clearInterval(i--));
+                            window.battle = new window.Battle();
+                            document.dispatchEvent(new Event('DOMContentLoaded'));
+                        }
+
+                        await jpxUtils.xhrGet([location.href]).then((results) => {
+                            for (let result of results) {
+                                if (result.status === 'rejected') {
+                                    console.error(result.reason);
+                                    break;
+                                }
+                                try {
+                                    let parser = new DOMParser();
+                                    let doc = parser.parseFromString(result.value.responseText, 'text/html');
+
+                                    if (doc.querySelector('#riddlemaster')) {
+                                        let riddlePanel = document.createElement('div');
+                                        riddlePanel.id = 'riddle-panel';
+                                        riddlePanel.style.cssText = 'position:fixed; top:0; left:0; z-index:9999; border:2px solid black; overflow:auto;';
+                                        riddlePanel.appendChild(document.importNode(doc.body, true));
+                                        document.body.appendChild(riddlePanel);
+
+                                        bindRiddleForm(riddlePanel.querySelector('#riddleform'));
+
+                                        let script = document.createElement('script');
+                                        script.type = 'text/javascript';
+                                        script.innerHTML = doc.getElementsByTagName('script')[2]?.innerHTML.replace('e("riddleform").submit();', 'e("riddleform")?.requestSubmit();');
+                                        riddlePanel.querySelector('#mainpane').appendChild(script);
+
+                                        document.dispatchEvent(new Event('DOMContentLoaded'));
+                                    } else {
+                                        updateBattleMain(doc);
+                                    }
+                                } catch (e) {
+                                    console.error('Parsing error for url:', result.value.url);
+                                }
+                            }
+                        });
+                    }
+                }
+
+                if (cfgBattle.advanceToNextRound) {
+                    btcp.click();
+                    btcp.style.visibility = 'hidden';
+                }
+            }
+            return;
+        }
+
+        switch (readyNext) {
+            case -1:
+                break;
+            default:
+                readyNext = -1;
+                setTimeout(() => {
+                    smartBattle();
+                }, 0);
+                break;
+        }
+    }
+}
+
+const keybindHandlers = {
+    openBattleRecords,
+    toggleActive,
+    openSettings: renderSettings,
+};
+
+function onKeyDown(e, throttledActionManager) {
+    if (jpxUtils.keyCaptureController) return;
+
+    let target = e.target;
+    if (
+        e.isComposing ||
+        (target instanceof HTMLInputElement && !target.readOnly && !target.disabled) ||
+        (target instanceof HTMLTextAreaElement && !target.readOnly && !target.disabled) ||
+        target.isContentEditable
+    ) return;
+
+    let currentKB = 'kb_' + jpxUtils.formatKeyCombo({
+        key: e.key,
+        ctrl: e.ctrlKey,
+        alt: e.altKey,
+        shift: e.shiftKey
+    }, '+');
+
+    if (!e.repeat) {
+        for (const [action, bind] of Object.entries(userKeybinds)) {
+            if (currentKB === ('kb_' + jpxUtils.formatKeyCombo(bind, '+'))) {
+                e.preventDefault();
+                keybindHandlers[action]?.();
+                return;
+            }
+        }
+    }
+
+    if (!log || isActiveBattle || !monstersObj.activeMonsters[0]) return;
+    let actions = cfgBattle[getBattleMode()][currentKB];
+    if (actions) {
+        e.preventDefault();
+        (e.repeat ? throttledActionManager : actionManager)(actions);
+    }
+}
+
+function toggleActive() {
+    if (!log) return;
+    isActiveBattle = !isActiveBattle;
+    jpxPanelManager.updateContent('battle');
+    jpxPanelManager.setBackground(isActiveBattle ? '#4f4' : '#fef');
+    if (isActiveBattle) goNext();
+    jpxPanelManager.dispatchState();
+}
+
+//Battle Smart
+function smartBattle() {
+    let { supports, attacks } = cfgBattle[getBattleMode()];
+    if (supports.length < 1) {
+        readyNext = '\nWith so few conditions, you might die in auto-battle.';
+        jpxPanelManager.updateContent('battle');
+        jpxPanelManager.setBackground('#ff5');
+        return true;
+    }
+    if (actionManager(supports)) return true;
+    if (actionManager(attacks)) return true;
+    readyNext = '\nNo available action.';
+    jpxPanelManager.updateContent('battle');
+    jpxPanelManager.setBackground('#ff5');
+
+    return false;
+}
+
+//Battle Utils
+function doSpellsDebuffGoNext({name, targetCount = 3, tailSkip = 0, bottomUp = false, maxAtFirst = Infinity, minMonstersLeft = 10, conditions}) {
+    let { monsters, activeMonsters } = monstersObj;
+
+    if (spellCooldowns[name] !== 0) return false;
+
+    let maxDo = 0;
+    if (monsters.length - activeMonsters.length <= 1) {
+        maxDo = maxAtFirst;
+    } else if (activeMonsters.length <= minMonstersLeft) {
+        maxDo = Infinity;
+    }
+    if ((actionCounts[name] ?? 0) >= maxDo) return false;
+
+    let startIndex = 0;
+    let endIndex = 0;
+    let firstIndex = activeMonsters[0].index;
+    let lastIndex = activeMonsters.at(-1).index;
+    let dir = !bottomUp ? 1 : -1;
+    if (!bottomUp) {
+        startIndex = firstIndex;
+        endIndex = tailSkip >= 0
+            ? lastIndex + 1 - tailSkip
+            : startIndex + Math.abs(tailSkip);
+    } else {
+        startIndex = monsters.length - 1 - lastIndex;
+        endIndex = tailSkip >= 0
+            ? monsters.length - (firstIndex + tailSkip)
+            : startIndex + Math.abs(tailSkip);
+    }
+    endIndex = Math.min(endIndex, monsters.length);
+    if (endIndex <= 0) return false;
+
+    let undebuffedObj = {};
+    const isUnDebuffed = (i) => {
+        return undebuffedObj[i] ??= (
+            !!monsters[i]?.isAlive &&
+            checkConditions(conditions, monsters[i], false)
+        );
+    };
+    const getIndex = (j) => !bottomUp ? j : monsters.length - 1 - j;
+
+    if (targetCount >= 3) {
+        for (let i = startIndex + 1; i < endIndex - 1; i++) {
+            let j = getIndex(i);
+            if (isUnDebuffed(j - 1) && isUnDebuffed(j) && isUnDebuffed(j + 1)) {
+                doSpellGoNext(name, monsters[j]);
+                return true;
+            }
+        }
+    }
+    if (targetCount >= 2) {
+        for (let i = startIndex; i < endIndex; i++) {
+            let j = getIndex(i);
+            if (!isUnDebuffed(j) || !isUnDebuffed(j + 1)) continue;
+            if (targetCount === 3 && i === startIndex && monsters[j + dir]?.isAlive) {
+                doSpellGoNext(name, monsters[j + dir]);
+            } else if (targetCount === 3 && i === endIndex - 1 && monsters[j - dir]?.isAlive) {
+                doSpellGoNext(name, monsters[j - dir]);
+            } else {
+                doSpellGoNext(name, monsters[j]);
+            }
+            return true;
+        }
+    }
+    if (targetCount >= 3) {
+        for (let i = startIndex + 1; i < endIndex - 1; i++) {
+            let j = getIndex(i);
+            if (isUnDebuffed(j - 1) && monsters[j]?.isAlive && isUnDebuffed(j + 1)) {
+                doSpellGoNext(name, monsters[j]);
+                return true;
+            }
+        }
+    }
+    for (let i = startIndex; i < endIndex; i++) {
+        let j = getIndex(i);
+        if (!isUnDebuffed(j)) continue;
+        if (targetCount === 3 && i === startIndex && monsters[j + dir]?.isAlive) {
+            doSpellGoNext(name, monsters[j + dir]);
+        } else if (targetCount === 3 && i === endIndex - 1 && monsters[j - dir]?.isAlive) {
+            doSpellGoNext(name, monsters[j - dir]);
+        } else {
+            doSpellGoNext(name, monsters[j]);
+        }
+        return true;
+    }
+
+    return false;
+}
+
+function doSpellGoNext(spell, monster) {
+    readyNext = 0;
+    if (monster.isAlive && spellCooldowns[spell] === 0) {
+        cast(spell);
+        monster.click();
+        return true;
+    }
+    return false;
+}
+
+function doAttackGoNext(monster) {
+    readyNext = 0;
+    if (monster.isAlive) {
+        monster.click();
+        return true;
+    }
+    return false;
+}
+
+function doToggleGoNext(name) {
+    readyNext = 0;
+    let state = document.querySelector('#ckey_' + name.toLowerCase());
+    if (state) {
+        dummy.setAttribute('onclick', state.getAttribute('onmouseover'));
+        dummy.click();
+        state.click();
+        return true;
+    }
+    return false;
+}
+
+function cast(name) {
+    let spell = document.querySelector('.bts > div[onclick][onmouseover*="\'' + name + '\'"]');
+    if (document.getElementsByClassName('btii')[0].innerHTML != name && spell) {
+        dummy.setAttribute('onclick', spell.getAttribute('onmouseover'));
+        dummy.click();
+        spell.click();
+    }
+}
+
+function use(name) {
+    let id = Object.entries(itemMap).find(([id, _name]) => _name === name)?.[0];
+    if (!id) return;
+
+    let itemArray = Array.from(document.querySelectorAll('.bti3 > div[onclick][onmouseover]'));
+    let item = itemArray.find(div => div.outerHTML.includes(id));
+    if (item) {
+        dummy.setAttribute('onclick', item.getAttribute('onmouseover'));
+        dummy.click();
+        item.click();
+    }
+}
+
+function getActionCooldowns(render = false) {
+    let quickbarObj = {};
+
+    function scan({selector, regexp, getName, getInitlCooldown}) {
+        let result = {};
+
+        for (const slot of document.querySelectorAll(selector)) {
+            let tooltip = slot.getAttribute('onmouseover');
+            let matches = tooltip?.match(regexp);
+
+            let name;
+            if (matches) {
+                name = getName(matches);
+            } else {
+                name = slot.textContent?.trim() || jpxUtils.parseHVClasses(slot.querySelector('div'), true);
+            }
+            if (!name) continue;
+
+            let cooldown;
+            let onClick = slot.getAttribute('onclick');
+            if (onClick) {
+                cooldown = 0;
+                result[name] = 0;
+            } else {
+                let lastUse = timeRecords.lastUse[name] ?? -Infinity;
+                let initCooldown = getInitlCooldown(matches) ?? 0;
+                cooldown = lastUse + initCooldown - timeRecords.turn;
+
+                result[name] = cooldown > 0 ? cooldown : '-';
+            }
+
+            if (!render) continue;
+            if (slot.id === 'ikey_p') {
+                quickbarObj.ikey_p = {
+                    name,
+                    tooltip,
+                    onClick,
+                    cooldown,
+                };
+            } else {
+                quickbarObj[name] = {
+                    tooltip,
+                    onClick,
+                    cooldown,
+                };
+            }
+        }
+
+        return result;
+    }
+
+    function getQuickName(quick) {
+        if (quick.id?.startsWith('extend_')) return quick.id.slice(7);
+
+        let tooltip = quick.getAttribute('onmouseover');
+        if (!tooltip) return;
+
+        return tooltip.match(regExp.spellInfo)?.[1];
+    }
+
+    function renderQuickbar() {
+        let quickbar = document.querySelector('#quickbar');
+
+        for (const name of cfgBattle.quickbarExtend) {
+            let quickDiv = document.createElement('div');
+            quickDiv.id = `extend_${name}`;
+            quickDiv.className = 'btqs extend';
+
+            if (quickbarObj[name]) {
+                let innerImg = document.createElement('img');
+
+                let tooltip = quickbarObj[name].tooltip;
+                quickDiv.setAttribute('onmouseover', tooltip ? tooltip : '');
+
+                let onClick = quickbarObj[name].onClick;
+                if (onClick) quickDiv.setAttribute('onclick', onClick);
+                else innerImg.style.opacity = 0.5;
+
+                let spellIconID = tooltip?.match(regExp.spellInfo)?.[2];
+                if (spellIconID) innerImg.src = '/y/a/' + spellIconID + '.png';
+                else innerImg.src = itemSrc.find(rule => rule.keys.some(key => {
+                    if (name === 'ikey_p') return quickbarObj[name].name.includes(key);
+                    return name.includes(key);
+                }))?.src ?? '/y/e/channeling.png';
+
+                innerImg.className = 'btqi';
+                quickDiv.appendChild(innerImg);
+            }
+
+            let outerImg = document.createElement('img');
+            outerImg.src = '/y/ab/b.png';
+            outerImg.className = 'btqb';
+            quickDiv.appendChild(outerImg);
+            quickbar.appendChild(quickDiv);
+        }
+
+        showCooldowns(quickbar);
+    }
+
+    function showCooldowns(quickbar) {
+        if (!cfgBattle.showCooldowns) return;
+
+        for (const quick of quickbar.querySelectorAll('.btqs[onmouseover]:not([onclick])')) {
+            let name = getQuickName(quick);
+            if (!name) continue;
+
+            let cooldown = quickbarObj[name].cooldown;
+            if (!(cooldown > 0)) continue;
+
+            let cooldownDiv = document.createElement('div');
+            cooldownDiv.className = 'cooldown';
+            cooldownDiv.textContent = cooldown;
+            quick.appendChild(cooldownDiv);
+        }
+    }
+
+    let spellCooldowns = scan({
+        selector: '.bts > div[onmouseover]',
+        regexp: regExp.spellInfo,
+        getName: m => m[1],
+        getInitlCooldown: m => m ? +m[5] : 0
+    });
+
+    let itemCooldowns = scan({
+        selector: '.bti3 > div',
+        regexp: regExp.itemInfo,
+        getName: m => itemMap[+m[1]],
+        getInitlCooldown: () => 40
+    });
+
+    if (render) renderQuickbar();
+
+    return {
+        spellCooldowns,
+        itemCooldowns
+    };
+}
+
+function getVitals() {
+    let ocBar = document.querySelector('img[src$="bar_orange.png"]');
+
+    let vitalCfg = ocBar ? {
+        widthHP: 414, widthMP: 414, widthSP: 414, widthOC: 414,
+        idHP: ['#dvrhb', '#dvrhd'], idMP: '#dvrm', idSP: '#dvrs',
+    } : {
+        widthHP: 496, widthMP: 207, widthSP: 207,
+        idHP: ['#vrhb', '#vrhd'], idMP: '#vrm', idSP: '#vrs',
+    };
+
+    let oc = 0;
+    if (ocBar) {
+        let ocPercentage = parseInt(ocBar.style.width, 10) / vitalCfg.widthOC;
+        oc = Math.round(10 * ocPercentage * 10) / 10;;
+    } else {
+        let vcp = document.querySelector('#vcp')?.innerHTML;
+        if (vcp) {
+            let matches = vcp.match(regExp.oc);
+            if (matches) {
+                oc = matches.length / 2 - 1;
+                if (vcp.match(regExp.ocHalf)) {
+                    oc -= 0.5;
+                }
+            }
+        }
+    }
+
+    let hpPercentage = Math.round(parseInt(document.querySelector('img[src$="green.png"]').style.width, 10) / vitalCfg.widthHP * 10) / 10;
+    let mpPercentage = Math.round(parseInt(document.querySelector('img[src$="bar_blue.png"]').style.width, 10) / vitalCfg.widthMP * 10) / 10;
+    let spPercentage = Math.round(parseInt(document.querySelector('img[src$="bar_red.png"]').style.width, 10) / vitalCfg.widthSP * 10) / 10;
+
+    let hpCurrentText = vitalCfg.idHP.map(id => document.querySelector(id)?.innerText).find(Boolean) || "0";
+    let hpCurrent = parseInt(hpCurrentText, 10) || 0;
+    let mpCurrent = parseInt(document.querySelector(vitalCfg.idMP).innerText, 10);
+    let spCurrent = parseInt(document.querySelector(vitalCfg.idSP).innerText, 10);
+
+    let hpMax = Math.round(hpCurrent / hpPercentage * 10) / 10;
+    let mpMax = Math.round(mpCurrent / mpPercentage * 10) / 10;
+    let spMax = Math.round(spCurrent / spPercentage * 10) / 10;
+
+    return {
+        oc,
+        hpPercentage, mpPercentage, spPercentage,
+        hpCurrent, mpCurrent, spCurrent,
+        hpMax, mpMax, spMax,
+    }
+}
+
+function getSpiritStatus() {
+    let ckey_spirit = document.querySelector('#ckey_spirit');
+    let spiritStatus = ckey_spirit.outerHTML.includes('spirit_a.png');
+    return spiritStatus;
+}
+
+function getEffectDuration(render = false) {
+    let playerEffectObj = {};
+    let effectsPane = document.querySelector('#pane_effects');
+    let effects = Array.from(effectsPane.getElementsByTagName('img'));
+    let playerEffectsLength = effects.length;
+
+    if (render) effects.push(...document.querySelectorAll('.btm6 > img[onmouseover]'));
+
+    effects.forEach((effect, index) => {
+        let tooltip = effect.getAttribute('onmouseover');
+        if (!tooltip) return;
+
+        let matches = tooltip.match(regExp.spellMatch);
+        if (!matches?.groups) return;
+
+        let { name, stack, description, turns } = matches.groups;
+        if (index < playerEffectsLength && name) playerEffectObj[name] = { turns, stack: stack ?? 1 };
+
+        if (render) {
+            let displayTurns = turns;
+            let durationContainer = document.createElement('div');
+            durationContainer.className = 'effect-duration';
+            let durationDiv = document.createElement('div');
+            if (turns < 9) {
+                durationDiv.style.background = turns < 4 ? 'aquamarine' : 'lavender';
+            } else if (turns === 'autocast') {
+                displayTurns = 'auto';
+            } else if (turns === 'permanent') {
+                displayTurns = decodeURIComponent('%E2%88%9E');
+            /*isekai911*/
+            } else if (turns === 'decaying') {
+                displayTurns = '';
+            /*isekai912*/
+            } else if (turns === '-') {
+                displayTurns = '-';
+            }
+
+            durationDiv.innerHTML = displayTurns;
+            if (stack) durationDiv.innerHTML += `${turns !== 'decaying' ? '&nbsp;' : ''}x${stack}`;
+
+            durationContainer.appendChild(durationDiv);
+            effect.parentNode.insertBefore(durationContainer, effect);
+        }
+    });
+
+    return playerEffectObj;
+}
+
+function getMonsters(render = false) {
+    let monsters = [];
+    let activeMonsters = [];
+    let bosses = [];
+    let activeBosses = [];
+
+    [...document.getElementsByClassName('btm1')].forEach((monster_btm1, index) => {
+        let monsterInfo = allMonsterInfo?.[`mkey_${(index + 1) % 10}`];
+        let monster = {
+            index: index,
+            click: function() {
+                monster_btm1.click();
+            },
+            name: 'Unknown',
+            type: 'Normal',
+            hpPercentage: 0,
+            mpPercentage: 0,
+            spPercentage: 0,
+            isAlive: monster_btm1.hasAttribute('onclick'),
+            effectObj: {},
+            monster_btm1: monster_btm1,
+        };
+
+        //index
+        let monster_btm2 = monster_btm1.querySelector('.btm2');
+        if (render && (cfgBattle.showMonsterIndex || cfgBattle.showMonsterInfo)) {
+            monster_btm2.querySelector('img').style.display = 'none';
+            let monIndex = document.createElement('div');
+            monIndex.textContent = index + 1;
+            monIndex.style.cssText = `font-size: ${cfgBattle.showMonsterInfo ? 17 : 28}px; font-weight: bold`;
+            monster_btm2.querySelector('div').appendChild(monIndex);
+        }
+        //info: monsterClass
+        if (render && cfgBattle.showMonsterInfo) {
+            let monClass = document.createElement('div');
+            monClass.textContent = monsterInfo?.monsterClass ?? '?';
+            monClass.dataset.field = 'monClass';
+            monClass.style.cssText = 'font-size: 10px; font-weight: bold; overflow: hidden;';
+            monster_btm2.querySelector('div').prepend(monClass);
+        }
+
+        //name
+        let monster_btm3 = monster_btm1.querySelector('.btm3');
+        let nameContainer = monster_btm3.querySelector('div');
+        monster.name = nameContainer.textContent.trim() || jpxUtils.parseHVClasses(nameContainer);
+        //type
+        for (const [type, names] of Object.entries(bossTypes)) {
+            if (names.has(monster.name)) {
+                monster.type = type;
+                monster.isAlive && activeBosses.push(monster);
+                bosses.push(monster);
+                break;
+            }
+        }
+        //info: attackType, powerLevel, trainer
+        if (render && cfgBattle.showMonsterInfo) {
+            monster_btm3.querySelector(':scope > div > div').style.display = 'inline';
+            let monTrAtkPl = document.createElement('span');
+            if (!jpxUtils.isEmpty(monsterInfo)) monTrAtkPl.textContent = `${monsterInfo?.attack ?? '?'}, ${monsterInfo?.plvl ?? '?'}`;
+            monTrAtkPl.dataset.field = 'monTrAtkPl';
+            monTrAtkPl.style.cssText = 'font-weight: bold; position: absolute; right: 2px;';
+            monster_btm3.querySelector('div').appendChild(monTrAtkPl);
+        }
+
+        //hpPercentage, mpPercentage, spPercentage
+        let monster_btm4 = monster_btm1.querySelector('.btm4');
+        let healthBar = monster_btm4.querySelector('img[src$="nbargreen.png"]');
+        monster.hpPercentage = Math.round((parseInt(healthBar?.style.width, 10) / 120) * 100) / 100 || 0;
+        let manaBar = monster_btm4.querySelector('img[src$="nbarblue.png"]');
+        monster.mpPercentage = Math.round((parseInt(manaBar?.style.width, 10) / 120) * 100) / 100 || 0;
+        let spiritBar = monster_btm4.querySelector('img[src$="nbarred.png"]');
+        monster.spPercentage = Math.round((parseInt(spiritBar?.style.width, 10) / 120) * 100) / 100 || 0;
+
+        //status
+        let monster_btm6 = monster_btm1.querySelector('.btm6');
+        monster_btm6.querySelectorAll('img').forEach((effect) => {
+            let tooltip = effect.getAttribute('onmouseover');
+            if (!tooltip) return;
+
+            let matches = tooltip.match(regExp.spellMatch);
+            if (!matches?.groups) return;
+
+            let { name, stack, description, turns } = matches.groups;
+            if (name) monster.effectObj[name] = { turns, stack: stack ?? 1 };
+        });
+
+        monsters.push(monster);
+        monster.isAlive && activeMonsters.push(monster);
+    });
+
+    return {
+        monsters, activeMonsters,
+        bosses, activeBosses,
+    }
+}
+
+function updateMonsterEffects() {
+    let { monsters, activeMonsters } = monstersObj;
+
+    function getEffectChanges(turnLog) {
+        let effectsAdded = turnLog.matchAll(regExp.effectGain);
+        let effectsRemoved = [...turnLog.matchAll(regExp.effectExpired), ...turnLog.matchAll(regExp.effectWear)];
+        let asleepRemoved = turnLog.matchAll(regExp.effectWearAsleep);
+        let confusedRemoved = turnLog.matchAll(regExp.effectWearConfused);
+        let effectChanges = {};
+
+        for (const match of effectsAdded) (effectChanges[match[1]] ??= { add: [], remove: [] }).add.push(match[2]);
+        for (const match of effectsRemoved) (effectChanges[match[2]] ??= { add: [], remove: [] }).remove.push(match[1]);
+        for (const match of asleepRemoved) (effectChanges[match[1]] ??= { add: [], remove: [] }).remove.push('Asleep');
+        for (const match of confusedRemoved) (effectChanges[match[1]] ??= { add: [], remove: [] }).remove.push('Confused');
+
+        return effectChanges;
+    }
+
+    function calcHiddenDelta(name, effectObj) {
+        let savedEffects = monstersEffects[name];
+        if (!savedEffects) return;
+
+        let maxDecrease = 0;
+        for (const effect in effectObj) {
+            let savedTurns = +savedEffects[effect]?.turns;
+            let effectTurns = +effectObj[effect]?.turns;
+            if (!isNaN(savedTurns) && !isNaN(effectTurns)) {
+                let delta = savedTurns - effectTurns;
+                if (delta > 0) maxDecrease = Math.max(maxDecrease, delta);
+            }
+        }
+
+        return maxDecrease;
+    }
+
+    function applyHiddenDelta(name, effectObj, delta) {
+        let savedEffects = monstersEffects[name];
+        if (!savedEffects) return;
+
+        let elementEffects = ['Searing Skin', 'Freezing Limbs', 'Turbulent Air', 'Deep Burns', 'Breached Defense', 'Blunted Attack'];
+        let effects = Object.keys(effectObj);
+        let elementCount = effects.filter(effect => elementEffects.includes(effect)).length;
+
+        for (const savedEffect in savedEffects) {
+            if (effects.includes(savedEffect)) continue;
+
+            if (
+                (elementCount < 3 && elementEffects.includes(savedEffect)) ||
+                savedEffect === 'Coalesced Mana'
+            ) {
+                delete savedEffects[savedEffect];
+                continue;
+            }
+
+            if (!delta || delta <= 0) continue;
+            let savedTurns = +savedEffects[savedEffect]?.turns;
+            if (isNaN(savedTurns)) continue;
+
+            if (savedTurns - delta < 0 && elementEffects.includes(savedEffect)) {
+                delete savedEffects[savedEffect];
+                continue;
+            }
+            savedEffects[savedEffect].turns = Math.max(0, savedTurns - delta);
+        }
+    }
+
+    let turnLog = log.innerHTML.match(regExp.turnLog)?.[0];
+    let effectChanges = turnLog ? getEffectChanges(turnLog) : {};
+
+    for (const activeMonster of activeMonsters) {
+        let name = activeMonster.name;
+        let savedEffects = monstersEffects[name] ??= {};
+
+        let effectObj = activeMonster.effectObj;
+        let effects = Object.keys(effectObj);
+
+        if (effects.length < 5) {
+            for (const effect in savedEffects) delete savedEffects[effect];
+        } else if (effects.length === 5) {
+            for (const effect in savedEffects) delete savedEffects[effect];
+            for (const effect of effects) savedEffects[effect] = { ...effectObj[effect] };
+        } else if (effects.length === 6) {
+            let delta = calcHiddenDelta(name, effectObj);
+            for (const effect of effects) savedEffects[effect] = { ...effectObj[effect] };
+
+            if (effectChanges[name]) {
+                for (const effect of effectChanges[name].add) !effects.includes(effect) && (savedEffects[effect] = { turns: '-', stack: '-' });
+                for (const effect of effectChanges[name].remove) (!effects.includes(effect) && (effect in savedEffects)) && delete savedEffects[effect];
+            }
+
+            applyHiddenDelta(name, effectObj, delta);
+
+            let monster_btm6 = activeMonster.monster_btm1.querySelector('.btm6');
+            monster_btm6.style.width = 'max-content';
+
+            for (const effect in savedEffects) {
+                if (!(effect in effectObj)) {
+                    let { turns, stack } = savedEffects[effect];
+                    effectObj[effect] = { turns, stack };
+                    if (isNaN(+turns)) turns = `'${String(turns).replace(/'/g, "\\'")}'`;
+
+                    let img = document.createElement('img');
+                    img.src = (isekaiSuffix ? '/isekai' : '') + (effectSrc[effect]?.scr || '/y/e/channeling.png');
+                    img.setAttribute('onmouseover', `battle.set_infopane_effect('${effect}', 'jpx Hidden Effects', ${turns})`);
+                    img.setAttribute('onmouseout', 'battle.clear_infopane()');
+
+                    monster_btm6.appendChild(img);
+                }
+            }
+        }
+    }
+}
+
+function monsterDBReady(prevInfo) {
+    const getMonsterIds = info => info ? Object.values(info).map(monsterInfo => monsterInfo?.monsterId ?? '').join('|') : '';
+
+    return new Promise((resolve, reject) => {
+        let start = Date.now();
+
+        (function loop() {
+            let info = window.HVMonsterDB?.getCurrentMonstersInformation();
+            let monsterIds = getMonsterIds(info);
+            if (info && !jpxUtils.isEmpty(info) && monsterIds !== prevMonsterIds) {
+                resolve({ info, monsterIds });
+                return;
+            }
+
+            if (Date.now() - start > 250) {
+                resolve();
+                return;
+            }
+
+            setTimeout(loop, 10);
+        })();
+    });
+}
+
+function updateMonsterInfo() {
+    monsterDBReady(prevMonsterIds).then((result) => {
+        if (!result) return;
+        allMonsterInfo = result.info;
+        prevMonsterIds = result.monsterIds;
+
+        if (!cfgBattle.showMonsterInfo) return;
+        for (const monster of monstersObj.monsters) {
+            let monsterInfo = allMonsterInfo?.[`mkey_${(monster.index + 1) % 10}`];
+            let monClass = monster.monster_btm1.querySelector('[data-field="monClass"]');
+            monClass.textContent = monsterInfo?.monsterClass ?? '?';
+            let monTrAtkPl = monster.monster_btm1.querySelector('[data-field="monTrAtkPl"]')
+            monTrAtkPl.textContent = `${monsterInfo?.attack ?? '?'}, ${monsterInfo?.plvl ?? '?'}`;
+        }
+    });
+}
+
+function initConditions() {
+    let { monsters, activeMonsters, bosses, activeBosses } = monstersObj;
+
+    const generalHandlers = {
+        world: arr => arr.includes(!isekaiSuffix ? 'Persistent' : 'Isekai'),
+        pLevel: range => jpxUtils.inRange(parseInt(localStorage.getItem(prefix + 'playerLevel' + isekaiSuffix) || 1), range),
+        battleTypes: arr => arr.includes(battleType),
+        difficulty: arr => {
+            let difficulty;
+            if (battleType === 'Tower') {
+                if (jpxUtils.inRange(towerFloor, [1, 6])) difficulty = 'Normal';
+                else if (jpxUtils.inRange(towerFloor, [7, 13])) difficulty = 'Hard';
+                else if (jpxUtils.inRange(towerFloor, [14, 19])) difficulty = 'Nightmare';
+                else if (jpxUtils.inRange(towerFloor, [20, 26])) difficulty = 'Hell';
+                else if (jpxUtils.inRange(towerFloor, [27, 33])) difficulty = 'Nintendo';
+                else if (jpxUtils.inRange(towerFloor, [34, 39])) difficulty = 'IWBTH';
+                else difficulty = 'PFUDOR';
+            } else {
+                difficulty = localStorage.getItem(prefix + 'difficulty' + isekaiSuffix) || 'PFUDOR';
+            }
+
+            return arr.includes(difficulty);
+        },
+        roundCurrent: range => jpxUtils.inRange(roundInfo.current, range),
+        roundLeft: range => jpxUtils.inRange(roundInfo.total - roundInfo.current, range),
+        roundTotal: range => jpxUtils.inRange(roundInfo.total, range),
+        floor: range => (battleType !== 'Tower' || jpxUtils.inRange(towerFloor, range)),
+        pActionCooldown: arr => {
+            let range = arr.slice(0, 2);
+            let actions = arr.slice(2);
+
+            return actions.every(action => {
+                let tier = action.match(/^T(\d)$/)?.[1];
+                let action2 = tier ? spellsDamageObj[spellDamageBonus.maxType][tier - 1] : action;
+                let cooldown = spellCooldowns[action2] ?? itemCooldowns[action2];
+                if (cooldown === '-') cooldown = 9999;
+                return jpxUtils.inRange(cooldown, range);
+            });
+        },
+        pActionCounts: arr => {
+            let range = arr.slice(0, 2);
+            let actions = arr.slice(2);
+
+            return actions.every(action => {
+                let tier = action.match(/^T(\d)$/)?.[1];
+                let action2 = tier ? spellsDamageObj[spellDamageBonus.maxType][tier - 1] : action;
+                return jpxUtils.inRange(actionCounts[action2] ?? 0, range);
+            });
+        },
+        pHP: range => jpxUtils.inRange(vitals.hpPercentage, range),
+        pMP: range => jpxUtils.inRange(vitals.mpPercentage, range),
+        pSP: range => jpxUtils.inRange(vitals.spPercentage, range),
+        pOC: range => jpxUtils.inRange(vitals.oc, range),
+        pSpiritStatus: flag => flag === spiritStatus,
+        pEffects: arr => {
+            let range = arr.slice(0, 2);
+            let effects = arr.slice(2);
+
+            return effects.every(effect => {
+                let turns = playerEffectsObj[effect]?.turns ?? -1;
+                if (turns === 'permanent') turns = 9999;
+                return isNaN(+turns) || jpxUtils.inRange(+turns, range);
+            });
+        },
+        pIgnoredEffects: arr => {
+            let range = arr.slice(0, 2);
+            let effects = arr.slice(2);
+
+            return !effects.some(effect => {
+                let turns = playerEffectsObj[effect]?.turns ?? -1;
+                if (turns === 'permanent') turns = 9999;
+                return isNaN(+turns) || jpxUtils.inRange(+turns, range);
+            });
+        },
+        pEffectStacks: arr => {
+            let range = arr.slice(0, 2);
+            let effects = arr.slice(2);
+
+            return effects.every(effect => {
+                let stack = playerEffectsObj[effect]?.stack ?? -1;
+                return isNaN(+stack) || jpxUtils.inRange(+stack, range);
+            });
+        },
+        monsters: range => jpxUtils.inRange(monsters.length, range),
+        activeMonsters: range => jpxUtils.inRange(activeMonsters.length, range),
+        defeatedMonsters: range => jpxUtils.inRange(monsters.length - activeMonsters.length, range),
+        bosses: range => jpxUtils.inRange(bosses.length, range),
+        activeBosses: range => jpxUtils.inRange(activeBosses.length, range),
+        defeatedBosses: range => jpxUtils.inRange(bosses.length - activeBosses.length, range),
+        mWithoutEffects: arr => {
+            let range = arr.slice(0, 2);
+            let effects = arr.slice(2);
+            return jpxUtils.inRange(activeMonsters.filter(activeMonster => effects.some(effect => activeMonster.effectObj[effect]?.turns == null)).length, range);
+        },
+    };
+
+    const targetHandlers = {
+        tName: (str, t) => {
+            let regex = jpxUtils.toRegExp(str);
+            return !regex || regex.test(t.name);
+        },
+        tTypes: (arr, t) => arr.includes(t.type),
+        tClasses: (arr, t) => arr.includes(allMonsterInfo?.[`mkey_${(t.index + 1) % 10}`]?.monsterClass),
+        tPowerLevel: (range, t) => jpxUtils.inRange(allMonsterInfo?.[`mkey_${(t.index + 1) % 10}`]?.plvl, range),
+        tIndex: (range, t) => jpxUtils.inRange(t.index, range.map(n => (
+            n = n > 0 ? n - 1 : n === 0 ? 0 : monsters.length + n,
+            Math.min(monsters.length - 1, Math.max(0, n))
+        ))),
+        tHP: (range, t) => jpxUtils.inRange(t.hpPercentage, range),
+        tEffects: (arr, t) => {
+            let range = arr.slice(0, 2);
+            let effects = arr.slice(2);
+
+            return effects.every(effect => {
+                let turns = t.effectObj[effect]?.turns ?? -1;
+                if (turns === 'permanent') turns = 9999;
+                return isNaN(+turns) || jpxUtils.inRange(+turns, range);
+            });
+        },
+        tIgnoredEffects: (arr, t) => {
+            let range = arr.slice(0, 2);
+            let effects = arr.slice(2);
+
+            return !effects.some(effect => {
+                let turns = t.effectObj[effect]?.turns ?? -1;
+                if (turns === 'permanent') turns = 9999;
+                return isNaN(+turns) || jpxUtils.inRange(+turns, range);
+            });
+        },
+        tEffectStacks: (arr, t) => {
+            let range = arr.slice(0, 2);
+            let effects = arr.slice(2);
+
+            return effects.every(effect => {
+                let stack = t.effectObj[effect]?.stack ?? -1;
+                return isNaN(+stack) || jpxUtils.inRange(+stack, range);
+            });
+        },
+        tDaysSinceUpdate: (range, t) => {
+            let lastUpdate = allMonsterInfo?.[`mkey_${(t.index + 1) % 10}`]?.lastUpdate;
+            let deltaDays = lastUpdate ? jpxUtils.daysSince(lastUpdate) : 9999;
+            return !jpxUtils.isEmpty(allMonsterInfo) && jpxUtils.inRange(deltaDays, range);
+        },
+    };
+
+    return { generalHandlers, targetHandlers };
+}
+
+function checkConditions(conditions, target, checkGlobal = true, checkTarget = true) {
+    let { monsters, activeMonsters, bosses, activeBosses } = monstersObj;
+
+    if (jpxUtils.isEmpty(conditionsObj)) conditionsObj = initConditions();
+    let { generalHandlers, targetHandlers } = conditionsObj;
+
+    return conditions.every(condition => {
+        let { key, value, offset = [0, 0], matched = [1, 1] } = condition;
+
+        if (key in generalHandlers && checkGlobal) {
+            return generalHandlers[key](value) === true;
+        }
+
+        if (key in targetHandlers && checkTarget) {
+            if (!target) return false;
+            let successCount = 0;
+
+            for (let i = target.index + offset[0]; i <= target.index + offset[1]; i++) {
+                if (i < 0 || i > monsters.length - 1) continue;
+                let m = activeMonsters.find(activeMonster => activeMonster.index === i);
+                if (m && targetHandlers[key](value, m) === true) successCount++;
+            }
+
+            return jpxUtils.inRange(successCount, matched);
+        }
+
+        return true;
+    });
+}
+
+const actionHandlers = {
+    stop(action, monster) {
+        const { customMessage, conditions } = action;
+
+        if (checkConditions(conditions, monster, true, !!monster)) {
+            readyNext = `Stop: ${customMessage}`;
+            jpxPanelManager.updateContent('battle');
+            jpxPanelManager.setBackground('#ff5');
+            jpxPanelManager.dispatchState();
+            return true;
+        }
+        return false;
+    },
+
+    spellSupport(action, monster) {
+        const { name, conditions } = action;
+
+        if (
+            spellCooldowns[name] === 0 &&
+            checkConditions(conditions, monster, true, !!monster)
+        ) {
+            readyNext = 0;
+            cast(name);
+            return true;
+        }
+        return false;
+    },
+
+    item(action, monster) {
+        const { name, conditions } = action;
+
+        if (
+            itemCooldowns[name] === 0 &&
+            checkConditions(conditions, monster, true, !!monster)
+        ) {
+            readyNext = 0;
+            use(name);
+            return true;
+        }
+        return false;
+    },
+
+    toggle(action, monster) {
+        const { name, toggled, conditions } = action;
+        return (
+            (name !== 'Spirit' || toggled !== spiritStatus) &&
+            checkConditions(conditions, monster, true, !!monster) &&
+            doToggleGoNext(name)
+        );
+    },
+
+    target(action, monster) {
+        const { priorityRule, conditions } = action;
+        if (!checkConditions(conditions, monster, true, false)) return null;
+
+        let { activeMonsters } = monstersObj;
+        monstersObj.sorted ??= {};
+
+        const getSorted = (fn, asc) => {
+            return monstersObj.sorted[priorityRule] ??= jpxUtils.getSortedArray(activeMonsters, fn, priorityRule.includes('Low to High'));
+        };
+
+        let list = activeMonsters;
+        switch (priorityRule) {
+            case 'Bottom Up':
+                list = monstersObj.sorted[priorityRule] ??= [...activeMonsters].reverse();
+                break;
+            case 'Current HP Low to High':
+            case 'Current HP High to Low':
+                list = getSorted(m => monsterData[m.index].maxHP * m.hpPercentage);
+                break;
+            case 'Current HP Percent Low to High':
+            case 'Current HP Percent High to Low':
+                list = getSorted(m => m.hpPercentage);
+                break;
+        }
+
+        return list.find(activeMonster => checkConditions(conditions, activeMonster, false)) ?? null;
+    },
+
+    smartDebuff(action, monster) {
+        const { conditions } = action;
+        return (
+            checkConditions(conditions, monster, true, false) &&
+            doSpellsDebuffGoNext({ ...action })
+        );
+    },
+
+    spellDebuff(action, monster) {
+        const { name, conditions } = action;
+        return (
+            monster &&
+            checkConditions(conditions, monster) &&
+            doSpellGoNext(name, monster)
+        );
+    },
+
+    spellDamage(action, monster) {
+        const { name, conditions } = action;
+        let tier = name.match(/^T(\d)$/)?.[1];
+        let spell = tier ? spellsDamageObj[spellDamageBonus.maxType][tier - 1] : name;
+        return (
+            monster &&
+            checkConditions(conditions, monster) &&
+            doSpellGoNext(spell, monster)
+        );
+    },
+
+    skill(action, monster) {
+        const { name, conditions } = action;
+        return (
+            monster &&
+            checkConditions(conditions, monster) &&
+            doSpellGoNext(name, monster)
+        );
+    },
+
+    normalAttack(action, monster) {
+        return (
+            monster &&
+            doAttackGoNext(monster)
+        )
+    },
+};
+
+function actionManager(actions) {
+    let targetPhase = false;
+    let targetMonster = null;
+    let targetLocked = false;
+
+    for (const action of actions) {
+        const handler = actionHandlers[action.type];
+        if (!handler) continue;
+        if (action.disabled === true) continue;
+
+        if (action.type === 'target') {
+            targetPhase = true;
+            if (!targetLocked) {
+                targetMonster = null;
+
+                let result = handler(action, targetMonster);
+                if (result) {
+                    targetMonster = result;
+                    targetLocked = true;
+                }
+            }
+            continue;
+        }
+
+        if (action.type !== 'smartDebuff' && targetPhase && !targetMonster) continue;
+        if (handler(action, targetMonster)) return true;
+        targetLocked = false;
+    }
+
+    return false;
+}
+
+//Battle Record
+function battleRecorder() {
+    let turnLog = log.innerHTML.match(regExp.turnLog)?.[0];
+    if (!turnLog) return;
+
+    let action = turnLog.match(regExp.action)?.[1];
+    if (!action) {
+        /*isekai911*/
+        if (turnLog.includes('<strong>Scanning')) {
+            turnLog = turnLog.replace(/[\t\r\n]+/g, '').replace(/>\s+</g, '><');
+            action = 'You use Scan';
+        /*isekai912*/
+        } else {
+            return;
+        }
+    }
+    /*isekai911*/
+    if (action.includes('gains the effect')) {
+        let action2 = turnLog.match(regExp.action2)?.[1];
+        action2 && (action = action2);
+    }
+    /*isekai912*/
+    let use = action.match(regExp.use)?.[2];
+
+    if (cfgBattle.recordBattleLog) {
+        battleLogRecorder();
+    }
+    timeRecorder(turnLog, action, use);
+    if (!isekaiSuffix) {
+        combatRecorder(turnLog, action, use);
+    /*isekai911*/
+    } else {
+        combatRecorder_isekai(turnLog, action, use);
+    }
+    /*isekai912*/
+    revenueRecorder(turnLog, action, use);
+}
+
+function battleLogRecorder() {
+    let tdArray = Array.from(log.querySelectorAll('td'));
+    let tlsArray = Array.from(log.querySelectorAll('.tls'));
+    if (regExp.battleTypeLog.test(tdArray.at(-1).innerHTML) & tlsArray.length === 1) {
+        for (let i = tdArray.length - 1; i > -1; i--) {
+            if (!tdArray[i].textContent.trim() || tdArray[i].innerHTML.includes('<hr>')) {
+                break;
+            }
+            battleLogRecordCurrent.unshift(tdArray[i].textContent);
+        }
+    }
+    battleLogRecordCurrent.push('--------------------------------------------------');
+    for (const td of tdArray) {
+        if (!td.textContent.trim() || td.innerHTML.includes('<hr>')) {
+            break;
+        }
+        if (td.querySelector('table')) {
+            let clone = td.cloneNode(true);
+            clone.querySelector('table')?.remove();
+            clone = clone.textContent.replace(/\s+/g, ' ').trim();
+            battleLogRecordCurrent.push(clone);
+        } else {
+            battleLogRecordCurrent.push(td.textContent.replace(/\s+/g, ' ').trim());
+        }
+    }
+
+    let btcp = document.querySelector('#btcp');
+    if (btcp) {
+        battleLogRecordCurrent.push('++++++++++++++++++++++++++++++++++++++++++++++++++');
+    }
+    battleLogRecord = battleLogRecord.concat(battleLogRecordCurrent);
+    battleLogRecordCurrent = [];
+}
+
+function timeRecorder(turnLog, action, use) {
+    timeRecords['startTime'] ??= Date.now();
+    timeRecords['action'] += 1;
+    if (!regExp.zeroturn.test(action)) timeRecords['turn'] += 1;
+    if (use) timeRecords['lastUse'][use] = timeRecords['turn'];
+}
+
+function riddleRecorder() {
+    if (jpxUtils.isEmpty(timeRecords)) timeRecords = JSON.parse(localStorage.getItem(prefix + 'timeRecords' + isekaiSuffix) || JSON.stringify(jpxUtils.createTimeRecords()));
+    let riddlesubmit = document.querySelector('#riddlesubmit')
+    riddlesubmit && riddlesubmit.addEventListener('click', () => {
+        timeRecords.riddle.solved += 1;
+        localStorage.setItem(prefix + 'timeRecords' + isekaiSuffix, JSON.stringify(timeRecords));
+    }, { once: true });
+}
+
+function combatRecorder(turnLog, action, use) {
+    if (use) {
+        if (
+            !regExp.zeroturn.test(action) ||
+            use.includes('Gem') ||
+            use.includes('Caffeinated Candy') ||
+            use.includes('Energy Drink')
+        ) {
+            jpxUtils.inc(combatRecords.use, use);
+            jpxUtils.inc(actionCounts, use);
+            use === 'Scan' && updateMonsterInfo();
+        }
+    } else if (action.includes('Spirit Stance Engaged')) {
+        jpxUtils.inc(combatRecords.use, 'Spirit');
+        jpxUtils.inc(actionCounts, 'Spirit');
+    } else if (action.includes('Defending.')) {
+        jpxUtils.inc(combatRecords.use, 'Defend');
+        jpxUtils.inc(actionCounts, 'Defend');
+    } else if (action.includes('Focusing.')) {
+        jpxUtils.inc(combatRecords.use, 'Focus');
+        jpxUtils.inc(actionCounts, 'Focus');
+    } else {
+        jpxUtils.inc(combatRecords.use, 'Attack');
+        jpxUtils.inc(actionCounts, 'Attack');
+    }
+
+    if (turnLog.includes('You gain the effect Cloak of the Fallen.')) {
+        jpxUtils.inc(combatRecords.use, 'Cloak of the Fallen');
+        jpxUtils.inc(actionCounts, 'Cloak of the Fallen');
+    }
+
+    let damage = turnLog.match(regExp.damage);
+    if (damage) {
+        let cast = action.includes('You cast');
+
+        for (let i = 0; i < damage.length; i++) {
+            let damageType = damage[i].match(regExp.damageType);
+            let damagePlus = damage[i].match(regExp.damagePlus);
+            let damagePoints = damage[i].match(regExp.damagePoints);
+
+            if (damageType) {
+                //Taken
+                if (damage[i].includes('its you for')) {
+                    let crit = damage[i].includes(' crits ');
+                    let spiritShield = damage[i].match(regExp.spiritShield);
+
+                    //Magical Taken
+                    if (damage[i].includes(' casts ')) {
+                        combatRecords['magicalTaken']['hit'] += 1;
+                        crit && (combatRecords['magicalTaken']['crit'] += 1);
+                        jpxUtils.inc(combatRecords.magicalTaken, damageType[2], +damageType[1]);
+
+                        if (spiritShield) {
+                            jpxUtils.inc(combatRecords.magicalTaken, 'spiritShield' + 'hit');
+                            if (crit) jpxUtils.inc(combatRecords.magicalTaken, 'spiritShield' + 'crit');
+                            jpxUtils.inc(combatRecords.magicalTaken, 'spiritShield' + damageType[2], +spiritShield[1]);
+                        }
+                    //Physical Taken
+                    } else {
+                        combatRecords['physicalTaken']['hit'] += 1;
+                        crit && (combatRecords['physicalTaken']['crit'] += 1);
+                        jpxUtils.inc(combatRecords.physicalTaken, damageType[2], +damageType[1]);
+
+                        if (spiritShield) {
+                            jpxUtils.inc(combatRecords.physicalTaken, 'spiritShield' + 'hit');
+                            if (crit) jpxUtils.inc(combatRecords.physicalTaken, 'spiritShield' + 'crit');
+                            jpxUtils.inc(combatRecords.physicalTaken, 'spiritShield' + damageType[2], +spiritShield[1]);
+                        }
+                    }
+                //Dealt
+                } else {
+                    //Magical Dealt
+                    if (cast) {
+                        if (!damage[i].includes(' explodes ')) {
+                            combatRecords['magicalDealt']['hit'] += 1;
+
+                            if (damage[i].includes(' blasts ')) {
+                                combatRecords['magicalDealt']['crit'] += 1;
+                            }
+                        }
+                        jpxUtils.inc(combatRecords.magicalDealt, damageType[2], +damageType[1]);
+                    //Physical Dealt
+                    } else {
+                        if (!regExp.strike.test(damage[i])) {
+                            combatRecords['physicalDealt']['hit'] += 1;
+
+                            if (regExp.crit.test(damage[i])) {
+                                combatRecords['physicalDealt']['crit'] += 1;
+                            }
+                        }
+
+                        jpxUtils.inc(combatRecords.physicalDealt, damageType[2], +damageType[1]);
+                    }
+                }
+            } else if (damagePlus) {
+                //Physical Dealt
+                //    <td class="tl">Bleeding Wound hits Monster for 1000 damage.</td>
+                //    <td class="tl">Spreading Poison hits Monster for 1000 damage.</td>
+                if (regExp.damagePhysicalPlus.test(damage[i])) {
+                    jpxUtils.inc(combatRecords.physicalDealt, 'damagePlus', +damagePlus[1]);
+                //Magical Dealt
+                //    <td class="tl">Burning Soul hits Monster for 1000 damage.</td>
+                //    <td class="tl">Ripened Soul hits Monster for 1000 damage.</td>
+                } else {
+                    jpxUtils.inc(combatRecords.magicalDealt, 'damagePlus', +damagePlus[1]);
+                }
+            } else if (damagePoints) {
+                //counter
+                //    <td class="tl">You counter Monster for 1000 points of void damage.</td>
+                if (damage[i].includes('You counter')) {
+                    jpxUtils.inc(combatRecords.physicalDealt, damagePoints[2], +damagePoints[1]);
+                //spike shield
+                //    <td class="tl">Your spike shield hits Monster for 1000 points of elec damage.</td>
+                } else {
+                    jpxUtils.inc(combatRecords.magicalDealt, damagePoints[2], +damagePoints[1]);
+                }
+            }
+        }
+    }
+
+    let combatRecordsFactory = (regexp, combatRecordsType, combatRecordsKey) => {
+        let match = turnLog.match(regexp);
+        if (match) jpxUtils.inc(combatRecords[combatRecordsType], combatRecordsKey, match.length);
+    }
+
+    //Magical Dealt
+    combatRecordsFactory(regExp.magicalDealtMiss, 'magicalDealt', 'miss');
+    combatRecordsFactory(regExp.magicalDealtEvade, 'magicalDealt', 'evade');
+    combatRecordsFactory(regExp.magicalDealtResist50, 'magicalDealt', 'resist50');
+    combatRecordsFactory(regExp.magicalDealtResist75, 'magicalDealt', 'resist75');
+    combatRecordsFactory(regExp.magicalDealtResist90, 'magicalDealt', 'resist90');
+    combatRecordsFactory(regExp.magicalDealtResist, 'magicalDealt', 'resist');
+
+    //Physical Dealt
+    combatRecordsFactory(regExp.physicalDealtMiss, 'physicalDealt', 'miss');
+    combatRecordsFactory(regExp.physicalDealtEvade, 'physicalDealt', 'evade');
+    combatRecordsFactory(regExp.physicalDealtParry, 'physicalDealt', 'parry');
+
+    //Magical Taken
+    //    miss
+    combatRecordsFactory(regExp.magicalTakenEvade, 'magicalTaken', 'evade');
+    combatRecordsFactory(regExp.magicalTakenResist50, 'magicalTaken', 'resist50');
+    combatRecordsFactory(regExp.magicalTakenResist75, 'magicalTaken', 'resist75');
+    combatRecordsFactory(regExp.magicalTakenResist90, 'magicalTaken', 'resist90');
+    //    resist
+    combatRecordsFactory(regExp.magicalTakenBlock, 'magicalTaken', 'block');
+
+    //Physical Taken
+    combatRecordsFactory(regExp.physicalTakenMiss, 'physicalTaken', 'miss');
+    combatRecordsFactory(regExp.physicalTakenEvade, 'physicalTaken', 'evade');
+    combatRecordsFactory(regExp.physicalTakenParry, 'physicalTaken', 'parry');
+    combatRecordsFactory(regExp.physicalTakenBlock, 'physicalTaken', 'block');
+
+    //counter
+    combatRecordsFactory(regExp.counter, 'use', 'Counter');
+}
+
+/*isekai911*/
+function combatRecorder_isekai(turnLog, action, use) {
+    if (use) {
+        if (
+            !regExp.zeroturn.test(action) ||
+            use.includes('Gem') ||
+            use.includes('Caffeinated Candy') ||
+            use.includes('Energy Drink')
+        ) {
+            jpxUtils.inc(combatRecords.use, use);
+            jpxUtils.inc(actionCounts, use);
+            use === 'Scan' && updateMonsterInfo();
+        }
+    } else if (action.includes('Spirit Stance Engaged')) {
+        jpxUtils.inc(combatRecords.use, 'Spirit');
+        jpxUtils.inc(actionCounts, 'Spirit');
+    } else if (action.includes('Defending.')) {
+        jpxUtils.inc(combatRecords.use, 'Defend');
+        jpxUtils.inc(actionCounts, 'Defend');
+    } else if (action.includes('Focusing.')) {
+        jpxUtils.inc(combatRecords.use, 'Focus');
+        jpxUtils.inc(actionCounts, 'Focus');
+    } else {
+        jpxUtils.inc(combatRecords.use, 'Attack');
+        jpxUtils.inc(actionCounts, 'Attack');
+    }
+
+    if (turnLog.includes('You gain the effect Cloak of the Fallen.')) {
+        jpxUtils.inc(combatRecords.use, 'Cloak of the Fallen');
+        jpxUtils.inc(actionCounts, 'Cloak of the Fallen');
+    }
+
+    let damage = turnLog.match(regExp.damage_isekai);
+    if (damage) {
+        for (let i = 0; i < damage.length; i++) {
+            let damageTaken = jpxUtils.matchAny(damage[i], regExp.damageTaken1_isekai, regExp.damageTaken2_isekai);
+            let spiritShield = damage[i].match(regExp.spiritShield_isekai);
+            let damageDealt = jpxUtils.matchAny(damage[i], regExp.damageDealt1_isekai, regExp.damageDealt2_isekai);
+            let strike = damage[i].match(regExp.strike_isekai);
+            let explode = damage[i].match(regExp.explode_isekai);
+            let damagePlus = damage[i].match(regExp.damagePlus_isekai);
+            let damagePoints = damage[i].match(regExp.damagePoints_isekai);
+
+            //Taken
+            if (damageTaken?.groups) {
+                let glance = damageTaken.groups.v.includes('glance');
+                let crit = damageTaken.groups.v.includes('crit');
+                let hit = !glance && !crit;
+                let damageType = jpxUtils.lowerFirst(damageTaken.groups.t);
+                //Magical Taken
+                if (damage[i].includes(' casts ')) {
+                    glance && (combatRecords.magicalTaken.glance += 1);
+                    hit && (combatRecords.magicalTaken.hit += 1);
+                    crit && (combatRecords.magicalTaken.crit += 1);
+                    jpxUtils.inc(combatRecords.magicalTaken, damageType, +damageTaken.groups.n);
+                //Physical Taken
+                } else {
+                    glance && (combatRecords.physicalTaken.glance += 1);
+                    hit && (combatRecords.physicalTaken.hit += 1);
+                    crit && (combatRecords.physicalTaken.crit += 1);
+                    jpxUtils.inc(combatRecords.physicalTaken, damageType, +damageTaken.groups.n);
+                }
+            } else if (spiritShield) {
+                jpxUtils.inc(combatRecords.physicalTaken, 'spiritShield' + 'hit');
+                jpxUtils.inc(combatRecords.physicalTaken, 'spiritShield' + 'damagePlus', +spiritShield[1]);
+            //Dealt
+            } else if (damageDealt?.groups) {
+                let glance = damageDealt.groups.v.includes('glance');
+                let crit = damageDealt.groups.v.includes('crit');
+                let critStack = parseInt(damageDealt.groups.s) || 1;
+                let hit = !glance && !crit;
+                let damageType = jpxUtils.lowerFirst(damageDealt.groups.t);
+                //Magical Dealt
+                if (action.includes('You cast')) {
+                    glance && (combatRecords.magicalDealt.glance += 1);
+                    hit && (combatRecords.magicalDealt.hit += 1);
+                    crit && (combatRecords.magicalDealt.crit += 1);
+                    jpxUtils.inc(combatRecords.magicalDealt, damageType, +damageDealt.groups.n);
+                //Physical Dealt
+                } else {
+                    glance && (combatRecords.physicalDealt.glance += 1);
+                    hit && (combatRecords.physicalDealt.hit += 1);
+                    if (crit) {
+                        combatRecords.physicalDealt.crit += 1;
+                        jpxUtils.inc(combatRecords.physicalDealt, `crit${critStack}`);
+                    }
+                    jpxUtils.inc(combatRecords.physicalDealt, damageType, +damageDealt.groups.n);
+                }
+            } else if (strike) {
+                let damageType = jpxUtils.lowerFirst(strike[3]);
+                jpxUtils.inc(combatRecords.physicalDealt, damageType, +strike[2]);
+            } else if (explode) {
+                let damageType = jpxUtils.lowerFirst(explode[2]);
+                jpxUtils.inc(combatRecords.magicalDealt, damageType, +explode[1]);
+            } else if (damagePlus) {
+                //Physical Dealt
+                //    <td class="tl">Bleeding Wound hits Monster for 1000 damage.</td>
+                //    <td class="tl">Spreading Poison hits Monster for 1000 damage.</td>
+                if (regExp.damagePhysicalPlus_isekai.test(damage[i])) {
+                    jpxUtils.inc(combatRecords.physicalDealt, 'damagePlus', +damagePlus[1]);
+                //Magical Dealt
+                //    <td class="tl">Burning Soul hits Monster for 1000 damage.</td>
+                //    <td class="tl">Ripened Soul hits Monster for 1000 damage.</td>
+                } else {
+                    jpxUtils.inc(combatRecords.magicalDealt, 'damagePlus', +damagePlus[1]);
+                }
+            } else if (damagePoints) {
+                let damageType = jpxUtils.lowerFirst(damagePoints[2]);
+                //counter
+                //    <td class="tl">You counter Monster for 1000 points of void damage.</td>
+                if (damage[i].includes('You counter')) {
+                    jpxUtils.inc(combatRecords.physicalDealt, damageType, +damagePoints[1]);
+                //spike shield
+                //    <td class="tl">Your spike shield hits Monster for 1000 points of elec damage.</td>
+                } else {
+                    jpxUtils.inc(combatRecords.magicalDealt, damageType, +damagePoints[1]);
+                }
+            }
+        }
+    }
+
+    //debuff
+    let debuffLog = turnLog.match(regExp.debuffLog_isekai)?.[0];
+    if (debuffLog) {
+        let debuffResist0 = debuffLog.match(regExp.debuffResist0_isekai)?.length || 0;
+        let debuffResist1 = debuffLog.match(regExp.debuffResist1_isekai)?.length || 0;
+        let debuffResist3 = debuffLog.match(regExp.debuffResist3_isekai)?.length || 0;
+        jpxUtils.inc(combatRecords.magicalDealt, 'debuffResist0', debuffResist0 - debuffResist1);
+        jpxUtils.inc(combatRecords.magicalDealt, 'debuffResist1', debuffResist1);
+        jpxUtils.inc(combatRecords.magicalDealt, 'debuffResist3', debuffResist3);
+    }
+
+    /*patch*/
+    let patchBlock = turnLog.match(/You block the attack\./g);
+    if (patchBlock) jpxUtils.inc(combatRecords.magicalTaken, 'block', -patchBlock.length);
+    let patchBlockAndParry = turnLog.match(/You block and parry the attack/g);
+    if (patchBlockAndParry) jpxUtils.inc(combatRecords.physicalTaken, 'blockAndParry', patchBlockAndParry.length);
+
+    let combatRecordsFactory = (regexp, combatRecordsType, combatRecordsKey) => {
+        let match = turnLog.match(regexp);
+        if (match) jpxUtils.inc(combatRecords[combatRecordsType], combatRecordsKey, match.length);
+    }
+
+    //Magical Dealt
+    combatRecordsFactory(regExp.magicalDealtMiss_isekai, 'magicalDealt', 'miss');
+    combatRecordsFactory(regExp.magicalDealtEvade_isekai, 'magicalDealt', 'evade');
+    combatRecordsFactory(regExp.magicalDealtResistPartially_isekai, 'magicalDealt', 'resistPartially');
+    combatRecordsFactory(regExp.magicalDealtResist_isekai, 'magicalDealt', 'resist');
+
+    //Physical Dealt
+    combatRecordsFactory(regExp.physicalDealtMiss_isekai, 'physicalDealt', 'miss');
+    combatRecordsFactory(regExp.physicalDealtEvade_isekai, 'physicalDealt', 'evade');
+    combatRecordsFactory(regExp.physicalDealtParryPartially_isekai, 'physicalDealt', 'parryPartially');
+    combatRecordsFactory(regExp.physicalDealtParry_isekai, 'physicalDealt', 'parry');
+
+    //Magical Taken
+    combatRecordsFactory(regExp.magicalTakenMiss_isekai, 'magicalTaken', 'miss');
+    combatRecordsFactory(regExp.magicalTakenEvade_isekai, 'magicalTaken', 'evade');
+    combatRecordsFactory(regExp.magicalTakenBlockPartially_isekai, 'magicalTaken', 'blockPartially');
+    combatRecordsFactory(regExp.magicalTakenBlock_isekai, 'magicalTaken', 'block');
+    combatRecordsFactory(regExp.magicalTakenResistPartially_isekai, 'magicalTaken', 'resistPartially');
+
+    //Physical Taken
+    combatRecordsFactory(regExp.physicalTakenMiss_isekai, 'physicalTaken', 'miss');
+    combatRecordsFactory(regExp.physicalTakenEvade_isekai, 'physicalTaken', 'evade');
+    combatRecordsFactory(regExp.physicalTakenParryPartially_isekai, 'physicalTaken', 'parryPartially');
+    combatRecordsFactory(regExp.physicalTakenParry_isekai, 'physicalTaken', 'parry');
+    combatRecordsFactory(regExp.physicalTakenBlockPartially_isekai, 'physicalTaken', 'blockPartially');
+    combatRecordsFactory(regExp.physicalTakenBlock_isekai, 'physicalTaken', 'block');
+
+    //Counter
+    combatRecordsFactory(regExp.counter_isekai, 'use', 'Counter');
+}
+/*isekai912*/
+
+function revenueRecorder(turnLog, action, use) {
+    if (
+        use && regExp.zeroturn.test(action) &&
+        !use.includes('Gem') &&
+        !use.includes('Caffeinated Candy') &&
+        !use.includes('Energy Drink')
+    ) {
+        revenueRecords['consumable'][use] ??= { use: 0, drop: 0 };
+        revenueRecords['consumable'][use]['use'] += 1;
+        jpxUtils.inc(actionCounts, use);
+    }
+
+    let gainExp = turnLog.match(regExp.gainExp);
+    if (gainExp) revenueRecords['exp'] += +gainExp[1];
+
+    let gainCredit = turnLog.match(regExp.gainCredit);
+    if (gainCredit) revenueRecords['credit'] += +gainCredit[1];
+
+    let proficiencies = turnLog.match(regExp.proficiencies);
+    if (proficiencies) {
+        for (let i = 0; i < proficiencies.length; i++) {
+            let proficiency = proficiencies[i].match(regExp.proficiency);
+            if (proficiency) {
+                let prof = parseFloat(proficiency[1]);
+                if (prof > 0) {
+                    jpxUtils.inc(revenueRecords.proficiency, proficiency[2], prof);
+                }
+            }
+        }
+    }
+
+    let dropLogs = turnLog.match(regExp.dropsLogs) || [];
+    for (let dropLog of dropLogs) {
+        let drop = dropLog.match(regExp.drop) || []; //drop[4]: sold, salvaged
+        switch (drop[2]) {
+            //Equipment, Material
+            case 'FF0000': {
+                if (!drop[4]){
+                    let quality = drop[3].match(regExp.quality)?.[1];
+                    if (quality) {
+                        revenueRecords['equipment'][quality] ??= [];
+                        revenueRecords['equipment'][quality].push(drop[3]);
+                    } else {
+                        jpxUtils.inc(revenueRecords.material, drop[3], +drop[1] || 1);
+                    }
+                }
+                break;
+            }
+            //Credit
+            case 'A89000': {
+                let credit = drop[3].match(regExp.credit);
+                if (credit) {
+                    revenueRecords['credit'] += (+credit[1] || 1);
+                }
+                break;
+            }
+            //Consumable
+            //    Restorative: Draught, Potion, Elixir
+            //    Infusion: Flames, Frost, Storms, Lighting, Divinity, Darkness
+            //    Scroll: Swiftness, Protection, the Avatar, Absorption, Shadows, Life, the Gods
+            //    Shard: Voidseeker Shard, Aether Shard, Featherweight Shard, Amnesia Shard, World Seed
+            //    Special Item: Flower Vase, Bubble Gum
+            case '00B000': {
+                if (!drop[3].includes('Gem')) {
+                    revenueRecords['consumable'][drop[3]] ??= { use: 0, drop: 0 };
+                    revenueRecords['consumable'][drop[3]]['drop'] += 1;
+                }
+                break;
+            }
+            //Token
+            //    Token of Blood, Chaos Token, Soul Fragment
+            case '254117': {
+                if (drop[3].includes('Blood')) {
+                    jpxUtils.inc(revenueRecords.token, 'Token of Blood');
+                } else if (drop[3].includes('Chaos')) {
+                    jpxUtils.inc(revenueRecords.token, 'Chaos Token');
+                } else if (drop[3].includes('Soul')) {
+                    jpxUtils.inc(revenueRecords.token, 'Soul Fragment', drop[1] === 'five' ? 5 : (+drop[1].match(/\d+/)?.[0] || 1));
+                }
+                break;
+            }
+            //Food
+            case '489EFF': {
+                jpxUtils.inc(revenueRecords.food, drop[3]);
+                break;
+            }
+            //Artifact, Collectable
+            case '0000FF': {
+                if (drop[3].includes('Figurine')) {
+                    jpxUtils.inc(revenueRecords.figurine, drop[3]);
+                } else {
+                    jpxUtils.inc(revenueRecords.artifact, drop[3]);
+                }
+                break;
+            }
+            //Trophy, World Seed, Charm
+            case '461B7E': {
+                /*isekai911*/
+                if (drop[3].includes('World Seed')) {
+                    revenueRecords['consumable'][drop[3]] ??= { use: 0, drop: 0 };
+                    revenueRecords['consumable'][drop[3]]['drop'] += +drop[1].match(/\d+/)?.[0] || 1;
+                /*isekai912*/
+                } else {
+                    jpxUtils.inc(revenueRecords.trophy, drop[3]);
+                }
+                break;
+            }
+            //Crystal
+            case 'BA05B4': {
+                let crystal = drop[3].match(regExp.crystal);
+                if (crystal) jpxUtils.inc(revenueRecords.crystal, crystal[2], +crystal[1] || 1);
+                break;
+            }
+        }
+    }
+}
+
+async function battleRecordPlayer() {
+    if (Object.keys(cfgStats).length < 1) {
+        let storedCfgStats = {};
+        try {
+            storedCfgStats = JSON.parse(localStorage.getItem(prefix + 'cfgStats') || '{}');
+        } catch (err) {
+            console.warn('Failed to load cfgStats. Using default cfgStats.');
+            storedCfgStats = {};
+        }
+        mergeCfg(storedCfgStats, defaultCfgStats, cfgStats, 'stats');
+    }
+
+    let startTime = timeRecords['startTime'] || 0;
+    let timestamp = new Date(timeRecords['startTime']).toISOString().slice(0, 19).replace('T', ' ');
+    let date = timestamp.slice(0, 10);
+    let result = 'undefined';
+    if (log.innerHTML.includes('You are Victorious!')) {
+        result = 'Victory';
+    } else if (log.innerHTML.includes('You have been defeated.')) {
+        result = 'Defeat';
+    } else if (log.innerHTML.includes('You have escaped from the battle.')) {
+        result = 'Flee';
+    }
+    let deltaSeconds = Math.round((Date.now() - startTime) / 1000);
+    let deltaTime = jpxUtils.secondsToTime(deltaSeconds);
+    let action = timeRecords['action'];
+    let tps = Math.round(action / deltaSeconds * 100) / 100;
+
+    //revenueRecords
+    let priceData = await jpxMarket.getMarketPrice();
+    for (const [categoryKey, categoryValue] of Object.entries(revenueRecords)) {
+        switch (categoryKey) {
+            case ('proficiency'):
+                for (const [key, value] of Object.entries(categoryValue)) {
+                    categoryValue[key] = Math.round(value * 1000) / 1000;
+                }
+                break;
+            case ('consumable'):
+                for (const [key, value] of Object.entries(categoryValue)) {
+                    value['balance'] = value['drop'] - value['use'];
+                    jpxUtils.inc(categoryValue, 'profit', (priceData[key] || 0) * value['balance']);
+                }
+                break;
+            case ('material'):
+            case ('token'):
+            case ('food'):
+            case ('figurine'):
+            case ('artifact'):
+            case ('trophy'):
+                for (const [key, value] of Object.entries(categoryValue)) {
+                    jpxUtils.inc(categoryValue, 'profit', (priceData[key] || 0) * value);
+                }
+                break;
+            case ('crystal'):
+                for (const [key, value] of Object.entries(categoryValue)) {
+                    jpxUtils.inc(categoryValue, 'total', value);
+                    jpxUtils.inc(categoryValue, 'profit', (priceData[key] || 0) * value);
+
+                }
+                break;
+        }
+        if (categoryValue?.['profit']) {
+            categoryValue['profit'] = Math.round(categoryValue['profit'] * 10) / 10;
+            revenueRecords['totalProfit'] += categoryValue['profit'];
+        }
+    }
+
+    revenueRecords['totalProfit'] += revenueRecords['credit'] || 0;
+    revenueRecords['totalProfit'] = Math.round(revenueRecords['totalProfit']);
+
+    //Stamina
+    let stamina = parseFloat(localStorage.getItem(prefix + 'stamina' + isekaiSuffix)) || 80;
+    let greatCost = !isekaiSuffix ? 0.03 : 0.06;
+    let normalCost = !isekaiSuffix ? 0.02 : 0.04;
+    let greatRoundQuota = Math.floor(Math.max(0, stamina - (battleType === 'Battle1000' ? 1 : 0) - 60) / greatCost);
+    let greatRound = Math.min(greatRoundQuota, roundInfo.current);
+    let normalRound = roundInfo.current - greatRound;
+    let staminaCost = greatRound * greatCost + normalRound * normalCost;
+
+    if (battleType === 'Encounter' || battleType === 'Colosseum') {
+        staminaCost = 0;
+    } else if (battleType === 'Battle1000') {
+        staminaCost += 1;
+    }
+    //    Daily 24 and LongGoneBeforeDaylight 20
+    let staminaRecords = JSON.parse(localStorage.getItem(prefix + 'staminaRecords' + isekaiSuffix) || '{}');
+    let currentDate = new Date().toISOString().slice(0, 10);
+    if (
+        !staminaRecords?.lastUpdate ||
+        new Date(staminaRecords.lastUpdate).toISOString().slice(0, 10) != currentDate
+    ) {
+        staminaRecords = { lastUpdate: Date.now(), staminaCost: 0 };
+    }
+
+    let staminaQuota = 24 + (!isekaiSuffix ? cfgBattle.dailyStaminaQuotaPlus : 0) - staminaRecords.staminaCost;
+    if (staminaCost > staminaQuota) {
+        if (staminaQuota > 0) {
+            revenueRecords['staminaCost'] = Math.round((staminaCost - staminaQuota) * 10) / 10;
+        } else {
+            revenueRecords['staminaCost'] = Math.round(staminaCost * 10) / 10;
+        }
+    } else {
+        revenueRecords['staminaCost'] = 0;
+    }
+    staminaRecords.staminaCost = Math.round((staminaRecords.staminaCost + staminaCost) * 10) / 10;
+    localStorage.setItem(prefix + 'staminaRecords' + isekaiSuffix, JSON.stringify(staminaRecords));
+    //Final Profit
+    let staminaUnitPrice = priceData['Energy Drink'] / 10;
+    let staminaProfit = Math.round(-revenueRecords['staminaCost'] * staminaUnitPrice * 10) / 10;
+    revenueRecords['finalProfit'] = Math.round((revenueRecords['totalProfit'] + staminaProfit) * 10) / 10;
+
+    let battleRecords = {
+        world: !isekaiSuffix ? 'Persistent' : 'Isekai',
+        timestamp: timestamp,
+        date: date,
+        playerLevel: parseInt(localStorage.getItem(prefix + 'playerLevel' + isekaiSuffix)) || 0,
+        difficulty: difficultyMap[localStorage.getItem(prefix + 'difficulty' + isekaiSuffix)] || 0,
+        persona: localStorage.getItem(prefix + 'persona' + isekaiSuffix),
+        battleType: battleType,
+        towerFloor: towerFloor,
+        roundInfo: roundInfo,
+        result: result,
+        deltaSeconds: deltaSeconds,
+        deltaTime: deltaTime,
+        turns: timeRecords.action,
+        tps: tps,
+        riddle: timeRecords.riddle.total,
+        combatRecords: combatRecords,
+        revenueRecords: revenueRecords,
+    }
+
+    timeRecordPlayer(battleRecords);
+    combatRecordPlayer(combatRecords);
+    revenueRecordPlayer(revenueRecords, priceData);
+    if (cfgBattle.recordBattleLog) battleLogPlayer();
+
+    storeBattleRecords(battleRecords)
+        .then(result => console.log(result))
+        .catch(err => console.error('Save failed: ', err));
+
+    cfgBattle.recordBattleLog && console.log(battleLogRecord);
+    console.log(timeRecords);
+    console.log(combatRecords);
+    console.log(revenueRecords);
+    console.log(battleRecords);
+}
+
+function battleLogPlayer() {
+    let blob = new Blob([JSON.stringify(battleLogRecord, null, '\t')], { type: 'text/plain;charset=utf-8' });
+    let url = URL.createObjectURL(blob);
+    let a = document.createElement('a');
+    log.parentNode.insertBefore(a, log.parentNode.firstChild);
+    a.innerText = 'Download Battle Log';
+    a.style.cssText = 'float: left; font-size: 200%; margin: 10px 0px;';
+    a.href = url;
+    a.download = 'battleLog.txt';
+}
+
+function timeRecordPlayer(battleRecords) {
+    let btcp = document.querySelector('#btcp');
+    if (!btcp) return;
+    let div = document.createElement('div');
+    div.id = 'time-records-div';
+    cfgStats.darkMode && div.classList.add('dark-mode');
+
+    let riddleSolved = timeRecords.riddle.solved < timeRecords.riddle.total ? `${timeRecords.riddle.solved} / ` : '';
+    div.innerText =
+        `${battleRecords.turns.toLocaleString()} ${t('tP.turns')}   ${battleRecords.deltaTime}  (${battleRecords.tps} ${t('tP.t/s')})   ` +
+        `${riddleSolved}${timeRecords.riddle.total} ${t('tP.riddle')}   ${combatRecords.use['Cloak of the Fallen'] || 0} ${t('tP.spark')}`;
+    btcp.appendChild(div);
+}
+
+function combatRecordPlayer(combatRecords) {
+    let table = document.createElement('table');
+    table.id = 'combat-records-table';
+    table.className = 'records-table';
+    cfgStats.darkMode && table.classList.add('dark-mode');
+    let tbody = document.createElement('tbody');
+
+    let innerHTML = `
+        <tr>
+            <td></td>
+            <td colspan="3">${t('cP.damageDealt')}</td>
+            <td colspan="5">${t('cP.damageTaken')}</td>
+        </tr>
+        <tr>
+            <td></td>
+            <td>${t('cP.physical')}</td><td>${t('cP.magical')}</td><td>${t('cP.total')}</td>
+            <td>${t('cP.physical')}</td><td>${t('cP.spirit')}</td><td>${t('cP.magical')}</td><td>${t('cP.spirit')}</td><td>${t('cP.total')}</td>
+        </tr>`;
+    /*isekai911*/
+    if (isekaiSuffix) {
+        innerHTML = `
+            <tr>
+                <td></td>
+                <td colspan="3">${t('cP.damageDealt')}</td>
+                <td colspan="4">${t('cP.damageTaken')}</td>
+            </tr>
+            <tr>
+                <td></td>
+                <td>${t('cP.physical')}</td><td>${t('cP.magical')}</td><td>${t('cP.total')}</td>
+                <td>${t('cP.physical')}</td><td>${t('cP.magical')}</td><td>${t('cP.spirit')}</td><td>${t('cP.total')}</td>
+            </tr>`;
+    }
+    /*isekai912*/
+
+    function renderCombatRow(label, rowId, style, combatRecords, rowConfig) {
+        let pd = combatRecords.physicalDealt[rowId] ?? 0;
+        let md = combatRecords.magicalDealt[rowId] ?? 0;
+        let td = pd + md;
+
+        let pt = combatRecords.physicalTaken[rowId] ?? 0;
+        let pts = combatRecords.physicalTaken['spiritShield' + rowId] ?? 0;
+        let mt = combatRecords.magicalTaken[rowId] ?? 0;
+        let mts = combatRecords.magicalTaken['spiritShield' + rowId] ?? 0;
+        let tt = pt + pts + mt + mts;
+
+        let dataObj = { label, pd, md, td, pt, pts, mt, mts, tt };
+        let order = ['label', 'pd', 'md', 'td', 'pt', 'pts', 'mt', 'mts', 'tt'];
+        /*isekai911*/
+        if (isekaiSuffix) order = ['label', 'pd', 'md', 'td', 'pt', 'mt', 'pts', 'tt'];
+        /*isekai912*/
+
+        let html = `<tr ${style}>`;
+        order.forEach((k, index) => {
+            let v = dataObj[k];
+            let styleStr = rowConfig[`s_${k}`] || '';
+            let styleText = styleStr ? ` style="${styleStr}"` : '';
+            html += `<td${styleText}>${(v === 0 && index !== 0) ? '' : v.toLocaleString()}</td>`;
+        });
+        html += '</tr>';
+        return html;
+    };
+
+    let totals = {};
+    let totalsTypes = ['damage', 'result', 'resultPartially'];
+    COMBAT_FIELDS.forEach(f => {
+        if (!totalsTypes.includes(f.type) || f.isTotal) return;
+        totals[f.type] ??= { pd: 0, md: 0, pt: 0, pts: 0, mt: 0, mts: 0 };
+
+        let acc = totals[f.type];
+        acc.pd += (combatRecords.physicalDealt[f.id] ?? 0);
+        acc.md += (combatRecords.magicalDealt[f.id] ?? 0);
+        acc.pt += (combatRecords.physicalTaken[f.id] ?? 0);
+        acc.pts += (combatRecords.physicalTaken['spiritShield' + f.id] ?? 0);
+        acc.mt += (combatRecords.magicalTaken[f.id] ?? 0);
+        acc.mts += (combatRecords.magicalTaken['spiritShield' + f.id] ?? 0);
+    });
+
+    cfgStats.combatRows.forEach(row => {
+        /*isekai911*/
+        let excludeIds = !isekaiSuffix
+            ? ['glance', 'parryPartially', 'resistPartially', 'blockPartially']
+            : ['resist50', 'resist75', 'resist90'];
+        if (excludeIds.includes(row.id)) return;
+        /*isekai912*/
+
+        let field = COMBAT_FIELDS.find(f => f.id === row.id);
+        let styleNormal = row.styleText ? `style="${row.styleText}"` : '';
+        let styleTotal = `style="border-top: 1px solid; border-bottom: 1px solid; ${row.styleText || ''}"`;
+
+        switch (field.type) {
+            case 'damage':
+            case 'result':
+            case 'resultPartially': {
+                if (field.isTotal) {
+                    let totalData = { ...(totals[field.type] || { pd: 0, md: 0, pt: 0, pts: 0, mt: 0, mts: 0 }) };
+                    /*patch*/if (isekaiSuffix && field.type === 'result') totalData.pt -= combatRecords.physicalTaken.blockAndParry || 0;
+                    innerHTML += renderCombatRow(t(field.label), 'total', styleTotal, {
+                        physicalDealt: { total: totalData.pd || 0 },
+                        magicalDealt: { total: totalData.md || 0 },
+                        physicalTaken: { total: totalData.pt || 0, spiritShieldtotal: totalData.pts || 0 },
+                        magicalTaken: { total: totalData.mt || 0, spiritShieldtotal: totalData.mts || 0 }
+                    }, row);
+                } else {
+                    innerHTML += renderCombatRow(t(field.label), field.id, styleNormal, combatRecords, row);
+                }
+                break;
+            }
+        }
+    });
+
+    /*isekai911*/
+    if (isekaiSuffix) {
+        innerHTML += `
+            <tr style="border-top: 1px solid; border-bottom: 1px solid;">
+                <td colspan="2" style="text-align: center;">${t('cP.critStack')}</td>
+                <td colspan="2" style="text-align: center;">${t('cP.debuffResist')}</td>
+                <td colspan="4"></td>
+            </tr>
+        `;
+
+        let debuffResistTotal = 0;
+        let debuffMap = {
+            1: { key: 'debuffResist0', label: t('cP.debuffResist0') },
+            2: { key: 'debuffResist1', label: t('cP.debuffResist1-2') },
+            3: { key: 'debuffResist3', label: t('cP.debuffResist3') },
+        };
+
+        for (let i = 1; i < 10; i++) {
+            let critStack = combatRecords.physicalDealt[`crit${i}`];
+            if (i <= 4) {
+                innerHTML += `<tr><td>${i}x-${t('cP.crit')}</td><td>${(critStack || '').toLocaleString()}</td>`;
+                if (i < 4) {
+                    let value = combatRecords.magicalDealt[debuffMap[i].key] || 0;
+                    debuffResistTotal += value;
+                    innerHTML += `<td style="text-align: left;">${debuffMap[i].label}</td><td>${(value || '').toLocaleString()}</td>`;
+                } else if (i === 4) {
+                    innerHTML += `<td style="border: 1px solid; text-align: left;">${t('cP.total')}</td><td style="border: 1px solid;">${(debuffResistTotal || '').toLocaleString()}</td>`;
+                }
+                innerHTML += '<td colspan="4"></td></tr>';
+            } else if (critStack) {
+                innerHTML += `<tr><td>${i}x-${t('cP.crit')}</td><td>${(critStack || '').toLocaleString()}</td><td colspan="6"></td></tr>`;
+            }
+        }
+    }
+    /*isekai912*/
+
+    tbody.innerHTML = innerHTML;
+    table.appendChild(tbody);
+    log.parentNode.insertBefore(table, log.parentNode.firstChild);
+
+    combatRecordPlayer_Use(combatRecords)
+}
+
+function combatRecordPlayer_Use(combatRecords) {
+    let table = document.createElement('table');
+    table.id = 'combat-records-use-table';
+    if (cfgStats.darkMode) table.classList.add('dark-mode');
+    let tbody = document.createElement('tbody');
+
+    let innerHTML = `<tr><th colspan="2">${t('cP.used')}</th></tr>`;
+
+    function renderCombatUseRow(label, entries) {
+        if (!entries.length) return;
+        innerHTML += `<tr><td>${t(label)}</td><td>${entries.join(', ')}</td></tr>`;
+    }
+
+    let useKeys = new Set();
+    let temp_combatUseRows = [{"id":"action"}, {"id":"item"}, {"id":"skill"}, {"id":"spellSupport"}, {"id":"spellDamage"}, {"id":"spellDebuff"}];
+    temp_combatUseRows.forEach(row => {
+        let field = COMBAT_USE_FIELDS.find(f => f.id === row.id);
+        let entries = [];
+        for (const { key, label } of field.keys) {
+            let count = combatRecords.use[key];
+            if (count) {
+                entries.push(`${t(label)}: ${count}`);
+                useKeys.add(key);
+            }
+        }
+        renderCombatUseRow(field.label, entries);
+    });
+
+    let others = [];
+    for (const [key, value] of Object.entries(combatRecords.use)) {
+        if (useKeys.has(key)) continue;
+        others.push(`${t(`cB.${key}`)}: ${value}`);
+    }
+    renderCombatUseRow(t('cP.misc'), others);
+
+    tbody.innerHTML = innerHTML;
+    table.appendChild(tbody);
+    let combatRecordsTable = document.querySelector('#combat-records-table');
+    combatRecordsTable.parentNode.insertBefore(table, combatRecordsTable.nextSibling);
+}
+
+function revenueRecordPlayer(revenueRecords, priceData) {
+    let btcp = document.querySelector('#btcp');
+    if (!btcp) return;
+
+    let table = document.createElement('table');
+    table.id = 'revenue-records-table';
+    table.className = 'records-table';
+    cfgStats.darkMode && table.classList.add('dark-mode');
+    let tbody = document.createElement('tbody');
+
+    let innerHTML = `
+        <tr style="border: 1px solid;"><td colspan="6">${t('rP.revenue')}</td></tr>
+        <tr style="border: 1px solid;">
+            <td style="text-align: left;">${t('rP.name')}</td>
+            <td>${t('rP.drop')}</td><td>${t('rP.use')}</td><td>${t('rP.balance')}</td><td>${t('rP.unitPrice')}</td><td>${t('rP.profit')}</td>
+        </tr>`;
+
+    cfgStats.revenueRows.forEach(row => {
+        let field = REVENUE_FIELDS.find(f => f.id === row.id);
+        let data = revenueRecords[field.source || field.id];
+        let styleNormal = row.styleText ? `style="${row.styleText}"` : '';
+        let styleFirst = `style="border-top: 1px solid; ${row.styleText || ''}"`;
+
+        switch (field.type) {
+            case 'simple': {
+                let value = field.key ? data[field.key] : data;
+                if (value) {
+                    innerHTML += `<tr${value < 0 ? ' class="deficit"' : ''} ${styleFirst}>
+                        <td>${t(field.label)}</td>
+                        <td colspan="5" style="text-align: center;">${value.toLocaleString()}</td>
+                    </tr>`;
+                }
+                break;
+            }
+            case 'list_flat':
+            case 'list_paired': {
+                let dataKeys = Object.keys(data);
+                let sortedKeys = jpxUtils.getSortedKeys(field.order || [], dataKeys);
+
+                let items = [];
+                sortedKeys.forEach(sortedKey => {
+                    if (field.type === 'list_flat') items.push(...data[sortedKey]);
+                    else if (field.type === 'list_paired') items.push(`${t(`rP.${sortedKey}`)}: ${data[sortedKey]}`);
+                });
+                if (!items.length) break;
+
+                let firstItem = items.shift();
+                innerHTML += `<tr ${styleFirst}>
+                    <td rowspan="${items.length + 1}">${t(field.label)}</td>
+                    <td colspan="5" style="text-align: center;">${firstItem}</td>
+                </tr>`;
+                items.forEach(item => {
+                    innerHTML += `<tr ${styleNormal}><td colspan="5" style="text-align: center;">${item}</td></tr>`;
+                });
+                break;
+            }
+            case 'grid':
+            case 'grid_detailed': {
+                let dataKeys = Object.keys(data).filter(key => {
+                    if (key === 'total' || key === 'profit') return false;
+                    let value = data[key];
+                    if (value && typeof value === 'object') return !jpxUtils.isEmpty(value);
+                    return value;
+                });
+                let sortedKeys = jpxUtils.getSortedKeys(field.order || [], dataKeys);
+                if (!sortedKeys.length) break;
+
+                const renderRow = (key, rowStyle) => {
+                    let value = data[key];
+                    let balance = (field.type === 'grid_detailed') ? (value.drop - value.use) : value;
+                    let unitPrice = priceData[key];
+                    let tdClass = !isNaN(unitPrice) ? '' : ' class="noData"';
+                    let tdUnitPrice = !isNaN(unitPrice) ? unitPrice.toLocaleString() : t('rP.noData');
+                    let tdProfit = !isNaN(unitPrice) ? (Math.round(unitPrice * balance * 10) / 10).toLocaleString() : t('rP.noData') ;
+                    let profitTds = `<td${tdClass}>${tdUnitPrice}</td><td${tdClass}>${tdProfit}</td>`;
+
+                    if (field.type === 'grid_detailed') {
+                        return `<tr${balance < 0 ? ' class="deficit"' : ''} ${rowStyle}>
+                            <td>${t(`rP.${key}`)}</td><td>${value.drop}</td><td>${value.use}</td><td>${balance}</td>${profitTds}
+                        </tr>`;
+                    } else {
+                        return `<tr ${rowStyle}>
+                            <td>${t(`rP.${key}`)}</td><td colspan="3">${value}</td>${profitTds}
+                        </tr>`;
+                    }
+                };
+
+                let firstKey = sortedKeys.shift();
+                innerHTML += renderRow(firstKey, styleFirst);
+                sortedKeys.forEach(sortedKey => innerHTML += renderRow(sortedKey, styleNormal));
+                break;
+            }
+            case 'total': {
+                if (data && data.total) {
+                    innerHTML += `<tr ${styleFirst}>
+                        <td>${t(field.label)}</td>
+                        <td colspan="3">${data.total}</td><td></td><td>${data.profit}</td>
+                    </tr>`;
+                }
+                break;
+            }
+            case 'stamina': {
+                let staminaRecords = JSON.parse(localStorage.getItem(prefix + 'staminaRecords' + isekaiSuffix) || '{}');
+                let staminaCost = staminaRecords?.staminaCost ?? 0;
+                let staminaQuotaTotal = 24 + (!isekaiSuffix ? cfgBattle.dailyStaminaQuotaPlus : 0)
+                let unitPrice = priceData['Energy Drink'] / 10;
+                let balance = -revenueRecords.staminaCost || 0;
+                let profit = Math.round(balance * unitPrice * 10) / 10;
+                innerHTML += `<tr${profit < 0 ? ' class="deficit"' : ''} ${styleFirst}>
+                    <td>${t(field.label)}</td><td>${staminaQuotaTotal}</td><td>${staminaCost}</td><td>${balance}</td>
+                    <td>${unitPrice.toLocaleString()}</td><td>${profit.toLocaleString()}</td>
+                </tr>`;
+                break;
+            }
+            case 'summary': {
+                let trClass = data < 0 ? 'deficit' : (data > 0 ? 'surplus' : '');
+                innerHTML += `<tr class="${trClass}" ${styleFirst}>
+                    <td>${t(field.label)}</td>
+                    <td colspan="5" style="text-align: center;">${data.toLocaleString()}</td>
+                </tr>`;
+                break;
+            }
+        }
+    });
+
+    tbody.innerHTML = innerHTML;
+    table.appendChild(tbody);
+    btcp.appendChild(table);
+}
+
+//Indexed DB
+function openDB() {
+    return new Promise((resolve, reject) => {
+        let request = window.indexedDB.open('jpx', 1);
+
+        request.onupgradeneeded = (event) => {
+            let db = event.target.result;
+            if (!db.objectStoreNames.contains('battleRecords')) {
+                let objectStore = db.createObjectStore('battleRecords', {
+                    keyPath: 'timestamp'
+                });
+                objectStore.createIndex('date', 'date');
+            }
+        };
+
+        request.onsuccess = (event) => {
+            resolve(event.target.result);
+        };
+        request.onerror = (event) => {
+            reject(request.error);
+        };;
+    });
+}
+
+async function storeBattleRecords(battleRecords) {
+    const db = await openDB();
+
+    const transaction = db.transaction('battleRecords', 'readwrite');
+    transaction.objectStore('battleRecords').put(battleRecords);
+
+    return new Promise((resolve, reject) => {
+        transaction.oncomplete = () => {
+            resolve('Saved successfully');
+        };
+        transaction.onerror = () => {
+            reject(transaction.error);
+        };
+    });
+}
+
+function openBattleRecords() {
+    if (Object.keys(cfgStats).length < 1) {
+        let storedCfgStats = {};
+        try {
+            storedCfgStats = JSON.parse(localStorage.getItem(prefix + 'cfgStats') || '{}');
+        } catch (err) {
+            console.warn('Failed to load cfgStats. Using default cfgStats.');
+            storedCfgStats = {};
+        }
+        mergeCfg(storedCfgStats, defaultCfgStats, cfgStats, 'stats');
+    }
+
+    newWindow = window.open();
+    if (newWindow === null || newWindow === undefined) return;
+
+    newWindow.document.title = t('sP.jpxStats');
+    newWindow.document.head.appendChild(newWindow.document.createElement('style')).innerHTML = `
+        body {
+            text-align: center;
+        }
+
+        table {
+            border-collapse: collapse;
+            table-layout: fixed;
+            margin-top: 20px;
+        }
+        tr {
+            border: 1px solid black;
+            font-size: 80%;
+        }
+        tr:hover {
+            background-color: #ccd9ff;
+        }
+        td, th {
+            border: 1px solid black;
+            min-width: 20px;
+            padding: 0 3px;
+            white-space: nowrap;
+        }
+
+        .tooltip:hover::after {
+            display: block;
+            position: absolute;
+            content: attr(content);
+            border: 1px solid black;
+            background: #eee;
+            padding: .25em;
+            white-space: pre;
+        }
+
+        body.dark-mode {
+            background-color: #121212;
+            color: #eee;
+        }
+        body.dark-mode table,
+        body.dark-mode td,
+        body.dark-mode th,
+        body.dark-mode tr {
+            border: 1px solid #555;
+        }
+        body.dark-mode tr:hover {
+            background-color: #333;
+        }
+        body.dark-mode .tooltip:hover::after {
+            color: #eee;
+            background: #222;
+            border-color: #555;
+        }
+        body.dark-mode input {
+            color: #eee;
+            background-color: #1e1e1e;
+            border: 1px solid #555;
+        }
+        body.dark-mode input[type="checkbox"] {
+            accent-color: #555;
+        }
+        body.dark-mode label {
+            color: #eee;
+        }
+    `;
+
+    cfgStats.darkMode && newWindow.document.body.classList.add('dark-mode');
+    newWindow.document.body.appendChild(createFilter());
+    getBattleRecordsRender().then(battleRecords => {
+        renderDynamicTable(battleRecords, cfgStats.statsColumns, newWindow.document.body);
+    });
+}
+
+async function getBattleRecordsRender() {
+    const db = await openDB();
+    const transaction = db.transaction('battleRecords', 'readonly');
+    const objectStore = transaction.objectStore('battleRecords');
+
+    let battleRecords = [];
+    let filters = getFilters();
+    let indexName = filters.aggregate ? 'date' : 'default';
+
+    let keyRange = IDBKeyRange.bound(0, 'z');
+    let source = (indexName === 'default' ? objectStore : objectStore.index(indexName));
+    let i = 0;
+
+    return new Promise(resolve => {
+        const req = source.openCursor(keyRange, 'prevunique');
+        req.onsuccess = function(e) {
+            let cursor = e.target.result;
+
+            if (!cursor || i >= filters.rows) {
+                battleRecords.unshift(generateAggregate(battleRecords, 'Total'), generateAggregate(battleRecords, 'Average'));
+
+                resolve(battleRecords);
+                return;
+            }
+
+            if (indexName === 'date') {
+                let dailyReq = objectStore.index('date').getAll(cursor.key);
+                dailyReq.onsuccess = function(ev) {
+                    let results = ev.target.result || [];
+                    results = results.filter(x => filterData(x, filters));
+                    if (results.length > 0) {
+                        battleRecords.push(generateAggregate(results, 'Total', results[0].date));
+                        i += 1;
+                    }
+
+                    cursor.continue();
+                };
+
+                return;
+            }
+
+            let bs = filterData(cursor.value, filters);
+            if (bs) {
+                battleRecords.push(bs);
+                i += 1;
+            }
+
+            cursor.continue();
+        };
+    });
+}
+
+async function exportIndexedDB() {
+    const db = await openDB();
+    const exportData = {
+        dbName: db.name,
+        version: db.version,
+        stores: {},
+    };
+
+    for (const storeName of db.objectStoreNames) {
+        exportData.stores[storeName] = await new Promise((resolve, reject) => {
+            const transaction = db.transaction(storeName, 'readonly');
+            const objectStore = transaction.objectStore(storeName);
+            const req = objectStore.getAll();
+            req.onsuccess = () => resolve(req.result);
+            req.onerror = () => reject(req.error);
+        });
+    }
+
+    db.close();
+    return exportData;
+}
+
+async function importIndexedDB(jsonData, merge = true) {
+    const db = await openDB();
+
+    for (const storeName in jsonData.stores) {
+        const transaction = db.transaction(storeName, 'readwrite');
+        const objectStore = transaction.objectStore(storeName);
+
+        if (!merge) objectStore.clear();
+        let existingKeys = null;
+        if (merge) {
+            existingKeys = await new Promise((resolve, reject) => {
+                const req = objectStore.getAllKeys();
+                req.onsuccess = () => resolve(new Set(req.result));
+                req.onerror = () => reject(req.error);
+            });
+        }
+
+        for (const record of jsonData.stores[storeName]) {
+            const key = record[objectStore.keyPath];
+            if (merge) {
+                if (!existingKeys.has(key)) objectStore.put(record);
+            } else {
+                objectStore.put(record);
+            }
+        }
+
+        await new Promise((resolve, reject) => {
+            transaction.oncomplete = () => resolve();
+            transaction.onerror = () => reject(transaction.error);
+        });
+    }
+
+    db.close();
+}
+
+function filterData(data, filters) {
+    if (filters.world && !filters.world.includes(data.world)) return false;
+    if (filters.battleType && !filters.battleType.includes(data.battleType)) return false;
+    if (filters.difficulties && !filters.difficulties.includes(data.difficulty.toString())) return false;
+    if (filters.result && !filters.result.includes(data.result)) return false;
+    if (filters.roundTotal && !jpxUtils.inRange(data.roundInfo.total, filters.roundTotal)) return false;
+
+    return data;
+}
+
+function generateAggregate(data_array, type, timestamp_name = null) { //type: Average, Total
+    if (data_array.length === 0) {
+        return false
+    } else {
+        let length = type === 'Average' ? data_array.length : 1;
+        let total_turns = data_array.map(x => x.turns).reduce((a,b) => a + b, 0);
+        let total_deltaSeconds = data_array.map(x => x.deltaSeconds).reduce((a,b) => a + b, 0);
+
+        let new_data = {
+            date: timestamp_name || t(`sP.${type}`),
+            roundInfo: {
+                current: Math.round(data_array.map(x => x.roundInfo.current).reduce((a,b) => a + b, 0) / length * 100) / 100,
+                total: Math.round(data_array.map(x => x.roundInfo.total).reduce((a,b) => a + b, 0) / length * 100) / 100,
+            },
+            deltaSeconds: type === 'Average' ? (Math.round(total_deltaSeconds / length * 100) / 100) : Math.round(total_deltaSeconds * 100) / 100,
+            deltaTime: '',
+            turns: type === 'Average' ? (Math.round(total_turns / length * 100) / 100) : total_turns,
+            tps: 0,
+            combatRecords: jpxUtils.createCombatRecords(),
+            revenueRecords: jpxUtils.createRevenueRecords(),
+        };
+        new_data.deltaTime = jpxUtils.secondsToTime(new_data.deltaSeconds);
+        new_data.tps = Math.round(new_data.turns / new_data.deltaSeconds * 100) / 100;
+
+        for (let i = 0; i < data_array.length; i++) {
+            for (const [categoryKey, categoryValue] of Object.entries(data_array[i].combatRecords)) {
+                for (const [fieldKey, fieldValue] of Object.entries(categoryValue)) {
+                    jpxUtils.inc(new_data.combatRecords[categoryKey], fieldKey, fieldValue);
+                }
+            }
+            for (const [categoryKey, categoryValue] of Object.entries(data_array[i].revenueRecords)) {
+                switch (categoryKey) {
+                    case ('credit'):
+                    case ('staminaCost'):
+                    case ('totalProfit'):
+                    case ('finalProfit'):
+                        new_data.revenueRecords[categoryKey] += categoryValue;
+                        break;
+                    case ('equipment'):
+                        for (const [key, value] of Object.entries(categoryValue)) {
+                            new_data.revenueRecords[categoryKey][key] ??= [];
+                            new_data.revenueRecords[categoryKey][key] = new_data.revenueRecords[categoryKey][key].concat(value);
+                        }
+                        break;
+                    case ('consumable'):
+                        for (const [key, value] of Object.entries(categoryValue)) {
+                            if (key != 'total' && key != 'profit') {
+                                new_data.revenueRecords[categoryKey][key] ??= {};
+                                jpxUtils.inc(new_data.revenueRecords[categoryKey][key], 'balance', value.balance);
+                            }
+                        }
+                        break;
+                    case ('token'):
+                    case ('food'):
+                    case ('figurine'):
+                    case ('artifact'):
+                    case ('trophy'):
+                    case ('crystal'):
+                        for (const [key, value] of Object.entries(categoryValue)) {
+                            if (key != 'total' && key != 'profit') {
+                                jpxUtils.inc(new_data.revenueRecords[categoryKey], key, value);
+                            }
+                        }
+                        break;
+                }
+            }
+        }
+
+        if (type === 'Average') {
+            for (const [categoryKey, categoryValue] of Object.entries(new_data.combatRecords)) {
+                for (const [fieldKey, fieldValue] of Object.entries(categoryValue)) {
+                    new_data.combatRecords[categoryKey][fieldKey] = Math.round(fieldValue / length * 10) / 10;
+                }
+            }
+            for (const [categoryKey, categoryValue] of Object.entries(new_data.revenueRecords)) {
+                switch (categoryKey) {
+                    case ('credit'):
+                    case ('staminaCost'):
+                    case ('totalProfit'):
+                    case ('finalProfit'):
+                        new_data.revenueRecords[categoryKey] = Math.round(categoryValue / length * 10) / 10;
+                        break;
+                    case ('consumable'):
+                        for (const [key, value] of Object.entries(categoryValue)) {
+                            if (key != 'total' && key != 'profit') {
+                                new_data.revenueRecords[categoryKey][key].balance = Math.round(value.balance / length * 10) / 10;
+                            }
+                        }
+                        break;
+                    case ('material'):
+                    case ('token'):
+                    case ('food'):
+                    case ('figurine'):
+                    case ('artifact'):
+                    case ('trophy'):
+                    case ('crystal'):
+                        for (const [key, value] of Object.entries(categoryValue)) {
+                            if (key != 'total' && key != 'profit') {
+                                new_data.revenueRecords[categoryKey][key] = Math.round(value / length * 10) / 10;
+                            }
+                        }
+                        break;
+                }
+            }
+        }
+
+        return new_data;
+    }
+}
+
+function createFilter() {
+    let filtersDiv = newWindow.document.createElement('div');
+    filtersDiv.id = 'filtersDiv';
+
+    filtersDiv.innerHTML = STATS_FILTERS.map(filter => {
+        let content = '';
+
+		switch (filter.type) {
+			case 'checkbox': {
+				content = filter.options.map(opt => {
+                    let isChecked = true;
+                    if (filter.id === 'filter-world') isChecked = !isekaiSuffix ? opt === 'Persistent' : opt === 'Isekai';
+
+                    return `
+                        <label>
+                            <input type="checkbox" value="${opt}" ${isChecked ? 'checked' : ''}>
+                            ${t(`sP.${opt}`)}
+                        </label>
+                    `;
+                }).join('');
+                break;
+			}
+			case 'rangeNumber': {
+				content = `
+					<label style="margin-right: 6px;">${t(filter.label)}: </label>
+					<input type="number" class="range-min" style="width:60px;" value="${filter.value[0]}">
+					<span style="margin:0 4px;">to</span>
+					<input type="number" class="range-max" style="width:60px;" value="${filter.value[1]}">
+				`;
+				break;
+			}
+			case 'number': {
+				content = `<input type="number" value="${filter.value}">`;
+				break;
+			}
+		}
+
+        return `<div id="${filter.id}">${content}</div>`;
+    }).join('');
+
+    filtersDiv.addEventListener('change', (e) => {
+        if (e.target.tagName === 'INPUT') {
+            getBattleRecordsRender().then(battleRecords => {
+                renderDynamicTable(battleRecords, cfgStats.statsColumns, newWindow.document.body);
+            });
+        }
+    });
+
+    return filtersDiv;
+}
+
+function getFilters() {
+    let filters = {};
+
+    STATS_FILTERS.forEach(filter => {
+        let filterEl = newWindow.document.getElementById(filter.id);
+        if (!filterEl) return;
+
+		switch (filter.type) {
+			case 'checkbox': {
+				let checked = Array.from(filterEl.querySelectorAll('input:checked')).map(x => x.value);
+				filters[filter.key] = filter.options.length === 1 ? !!checked.length : checked;
+				break;
+			}
+			case 'rangeNumber': {
+				filters[filter.key] = [parseInt(filterEl.querySelector('.range-min').value) ?? 0, parseInt(filterEl.querySelector('.range-max').value) ?? 9999];
+				break;
+			}
+			case 'number': {
+				filters[filter.key] = parseInt(filterEl.querySelector('input').value) ?? 0;
+				break;
+			}
+		}
+    });
+
+    return filters;
+}
+
+function renderDynamicTable(battleRecords, displayedColumns, parent) {
+    newWindow.document.querySelector('#battleStatsTable')?.remove();
+
+    let activeFields = displayedColumns.map(column => {
+        let baseField = STATS_FIELDS.find(f => f.id === column.id);
+        return baseField ? { ...baseField, ...column } : null;
+    }).filter(f => f);
+
+    let table = newWindow.document.createElement('table');
+    table.id = 'battleStatsTable';
+
+    let thead = newWindow.document.createElement('thead');
+    let theadHTML = '<tr>';
+    for (const field of activeFields) {
+        let style = field.style ? ` style="${field.style}"` : '';
+        theadHTML += `<th${style}>${field.customName || t(field.label)}</th>`;
+    }
+    theadHTML += '</tr>';
+    thead.innerHTML = theadHTML;
+    table.appendChild(thead);
+
+    let tbody = newWindow.document.createElement('tbody');
+
+    const parseColorThresholds = (str) => {
+        if (!str) return [];
+        return str.split(',').map(s => {
+            const [value, color] = s.split(':');
+            return { min: parseFloat(value.trim()), color: color?.trim() };
+        }).filter(thr => !isNaN(thr.min)).sort((a, b) => b.min - a.min);
+    };
+
+    for (const record of battleRecords) {
+        let tr = newWindow.document.createElement('tr');
+
+        for (const field of activeFields) {
+            let td = newWindow.document.createElement('td');
+            let value = field.get(record);
+
+            if (field.styleText) td.style.cssText = field.styleText;
+            if (field.doI18n) value = t(`sP.${value}`);
+            if (value && typeof value === 'object' && 'drop' in value) {
+                td.classList.add('tooltip');
+                td.setAttribute('content', `${t('sP.drop')}: ${value.drop.toLocaleString()}\n${t('sP.use')}: ${value.use.toLocaleString()}`);
+                td.textContent = value.balance.toLocaleString();
+            } else if (typeof value === 'number') {
+                td.textContent = value.toLocaleString();
+
+                if (field.colorThresholds) {
+                    let thresholds = parseColorThresholds(field.colorThresholds);
+                    let match = thresholds.find(thr => value >= thr.min);
+                    if (match) td.style.color = match.color;
+                }
+            } else {
+                td.textContent = value || '';
+            }
+
+            tr.appendChild(td);
+        }
+        tbody.appendChild(tr);
+    }
+
+    table.appendChild(tbody);
+    parent.appendChild(table);
+}
+
+//Settings
+function getBattleMode(defaultBattleStyle = 'Unarmed') {
+    let modeKey = `${battleStyle || defaultBattleStyle}_${battleType}`;
+    return !jpxUtils.isEmpty(cfgBattle[modeKey]) ? modeKey : `${battleStyle || defaultBattleStyle}_General`;
+}
+
+function renderSchema(container, schema, data) {
+    container.innerHTML = '';
+
+    if (schema.type === 'object') {
+        schema.properties.forEach(field => {
+            let fieldDiv = document.createElement('div');
+            fieldDiv.className = 'field-block';
+            renderField(fieldDiv, field, data);
+            container.appendChild(fieldDiv);
+        });
+    }
+}
+
+const fieldRenderers = {
+    heading(container, field) {
+        let div = document.createElement('div');
+        div.textContent = t(field.label);
+        if (field.class) div.classList.add(field.class);
+        container.appendChild(div);
+    },
+
+    constant(container, field) {
+        let div = document.createElement('div');
+        div.textContent = t(field.label);
+        if (field.class) div.classList.add(field.class);
+        container.appendChild(div);
+    },
+
+    boolean(container, field, dataObj) {
+        let key = field.key;
+        let checkboxId = getUniqueId(key);
+        container.innerHTML = `
+            <label for="${checkboxId}">
+                <input type="checkbox" id="${checkboxId}" ${dataObj[key] ? 'checked' : ''}>
+                ${t(field.label)}
+            </label>
+        `;
+        container.querySelector('input').onchange = event => dataObj[key] = event.target.checked;
+    },
+
+    text(container, field, dataObj) {
+        let key = field.key;
+        let inputId = getUniqueId(key);
+        container.innerHTML = `
+            ${field.skipLabel ? '' : `<label for="${inputId}">${t(field.label)}</label>`}
+            <input id="${inputId}" type="text">
+        `;
+
+        let input = container.querySelector('input');
+        if (field.placeholder) input.placeholder = field.placeholder;
+        input.value = dataObj[key] ?? '';
+        input.oninput = event => dataObj[key] = event.target.value;
+    },
+
+    number(container, field, dataObj) {
+        let key = field.key;
+        let inputId = getUniqueId(key);
+        container.innerHTML = `
+            ${field.skipLabel ? '' : `<label for="${inputId}">${t(field.label)}</label>`}
+            <input id="${inputId}" type="number" value="${dataObj[key] ?? 0}">
+        `;
+        container.querySelector('input').oninput = event => dataObj[key] = +event.target.value;
+    },
+
+    rangeNumber(container, field, dataObj) {
+        let key = field.key;
+        if (!Array.isArray(dataObj[key])) dataObj[key] = [0, 0];
+        let idMin = getUniqueId(`${key}_min`);
+        let idMax = getUniqueId(`${key}_max`);
+
+        container.innerHTML = `
+            ${field.skipLabel ? '' : `<label style="margin-right: 6px;">${t(field.label)}</label>`}
+            <input id="${idMin}" type="number" style="width:60px;" value="${dataObj[key][0]}">
+            <span style="margin:0 4px;">to</span>
+            <input id="${idMax}" type="number" style="width:60px;" value="${dataObj[key][1]}">
+        `;
+
+        container.querySelector(`#${idMin}`).oninput = event => dataObj[key][0] = +event.target.value;
+        container.querySelector(`#${idMax}`).oninput = event => dataObj[key][1] = +event.target.value;
+    },
+
+    dropdown(container, field, dataObj) {
+        let selectId = getUniqueId(field.key);
+
+        let select = document.createElement('select');
+        select.id = selectId;
+        if (field.class) select.className = field.class;
+        field.options.forEach(opt => {
+            let option = document.createElement('option');
+            option.value = opt.value;
+            option.textContent = t(opt.label);
+            select.appendChild(option);
+        });
+
+        if (field.hasModeDropdown) {
+            select.dataset.role = field.hasModeDropdown;
+
+            let selectContent = document.createElement('div');
+            select.onchange = () => {
+                selectContent.innerHTML = '';
+                renderSchema(selectContent, field.itemSchema, dataObj[select.value]);
+            };
+
+            container.appendChild(select);
+            container.appendChild(selectContent);
+
+            let modeKey = getBattleMode('OneHanded');
+            let importBtn = document.getElementById('import-button');
+            if (importBtn?.dataset.battleMode) {
+                modeKey = importBtn.dataset.battleMode;
+                delete importBtn.dataset.battleMode;
+            } else {
+                let resetBtn = document.getElementById('reset-current-button');
+                if (resetBtn?.dataset.battleMode) {
+                    modeKey = resetBtn.dataset.battleMode;
+                    delete resetBtn.dataset.battleMode;
+                }
+            }
+
+            if (select.options.length > 0) {
+                if ([...select.options].some(opt => opt.value === modeKey)) select.value = modeKey;
+                else select.selectedIndex = 0;
+                renderSchema(selectContent, field.itemSchema, dataObj[select.value]);
+            }
+        } else {
+            let wrap = document.createElement('div');
+            let label = document.createElement('label');
+
+            label.htmlFor = selectId;
+            label.textContent = t(field.label);
+            wrap.appendChild(label);
+
+            let initValue = dataObj[field.key] ?? field.options[0]?.value;
+            select.value = initValue;
+            dataObj[field.key] = initValue;
+
+            select.onchange = () => dataObj[field.key] = select.value;
+
+            wrap.appendChild(select);
+            container.appendChild(wrap);
+        }
+    },
+
+    dragState: { fromIndex: null, groupId: null },
+    array(container, field, dataObj) {
+        if (!Array.isArray(dataObj[field.key])) dataObj[field.key] = [];
+        let arrayGroupId = Symbol('array-group');
+
+        if (!field.skipLabel) container.innerHTML = `<div${field.class ? ` class="${field.class}"` : ''} style="font-weight:bold; margin-bottom:4px;">${t(field.label)}</div>`;
+
+        let listDiv = document.createElement('div');
+        container.appendChild(listDiv);
+
+        function renderRowButtons(row, index) {
+            const isTop = index === 0;
+            const isBottom = index === dataObj[field.key].length - 1;
+
+            row.style.opacity = dataObj[field.key][index].disabled === true ? '0.5' : '1';
+
+            let handle = jpxUtils.createButton(row, { text: decodeURIComponent('%E2%89%A1'), className: 'drag-handle' });
+            handle.draggable = true;
+            handle.addEventListener('dragstart', e => {
+                fieldRenderers.dragState.fromIndex = index;
+                fieldRenderers.dragState.groupId = arrayGroupId;
+                e.dataTransfer.setDragImage(row, 0, 0);
+                e.dataTransfer.effectAllowed = 'move';
+                e.dataTransfer.setData('text/plain', '');
+            });
+
+            handle.addEventListener('dragend', () => {
+                fieldRenderers.dragState.fromIndex = null;
+                fieldRenderers.dragState.groupId = null;
+            });
+
+            row.addEventListener('dragover', e => {
+                if (fieldRenderers.dragState.groupId === arrayGroupId) e.preventDefault();
+            });
+            row.addEventListener('drop', e => {
+                e.preventDefault();
+                if (fieldRenderers.dragState.groupId !== arrayGroupId) return;
+
+                let from = fieldRenderers.dragState.fromIndex;
+                if (from == null || from === index) return;
+
+                dataObj[field.key].splice(index, 0, dataObj[field.key].splice(from, 1)[0]);
+                fieldRenderers.dragState.fromIndex = null;
+                fieldRenderers.dragState.groupId = null;
+                renderArray();
+            });
+
+            jpxUtils.createButton(row, { text: decodeURIComponent('%E2%86%91%E2%86%91'), disabled: isTop, onClick: () => {
+                dataObj[field.key].unshift(dataObj[field.key].splice(index, 1)[0]);
+                renderArray();
+            }});
+            jpxUtils.createButton(row, { text: decodeURIComponent('%E2%86%91'), disabled: isTop, onClick: () => {
+                [dataObj[field.key][index - 1], dataObj[field.key][index]] = [dataObj[field.key][index], dataObj[field.key][index - 1]];
+                renderArray();
+            }});
+            jpxUtils.createButton(row, { text: decodeURIComponent('%E2%86%93'), disabled: isBottom, onClick: () => {
+                [dataObj[field.key][index + 1], dataObj[field.key][index]] = [dataObj[field.key][index], dataObj[field.key][index + 1]];
+                renderArray();
+            }});
+            jpxUtils.createButton(row, { text: decodeURIComponent('%E2%86%93%E2%86%93'), disabled: isBottom, onClick: () => {
+                dataObj[field.key].push(dataObj[field.key].splice(index, 1)[0]);
+                renderArray();
+            }});
+            jpxUtils.createButton(row, { text: decodeURIComponent('%E2%A7%89'), onClick: () => {
+                dataObj[field.key].splice(index + 1, 0, JSON.parse(JSON.stringify(dataObj[field.key][index])));
+                renderArray();
+            }});
+            if (field.canDisable) {
+                jpxUtils.createButton(row, {
+                    text: decodeURIComponent('%E2%8A%98'),
+                    onClick: () => {
+                        if (dataObj[field.key][index]?.disabled === true) {
+                            delete dataObj[field.key][index].disabled;
+                        } else if (dataObj[field.key][index] && typeof dataObj[field.key][index] === 'object') {
+                            dataObj[field.key][index].disabled = true;
+                        }
+                        renderArray();
+                    }
+                });
+            }
+            jpxUtils.createButton(row, { text: t('delete'), onClick: () => {
+                dataObj[field.key].splice(index, 1);
+                renderArray();
+            }});
+        };
+
+        function renderAddButtons(addContainer) {
+            const addAction = (targetSchema) => {
+                dataObj[field.key].push(targetSchema.type === 'text' ? '' : createEmptyObject(targetSchema));
+                renderArray();
+            };
+
+            if (field.itemSchema.discriminator) {
+                for (const [typeKey, subSchema] of Object.entries(field.itemSchema.oneOf)) {
+                    jpxUtils.createButton(addContainer, {
+                        text: `${t('add')} ${t(subSchema.properties.find(item => item.type === 'constant')?.label)}`,
+                        onClick: () => addAction(subSchema)
+                    });
+                };
+            } else {
+                jpxUtils.createButton(addContainer, { text: t('add'), onClick: () => addAction(field.itemSchema) });
+            }
+        };
+
+        function renderMultiSelectMode() {
+            if (field.hasRange) {
+                if (dataObj[field.key].length < 2) dataObj[field.key].unshift(0, 0);
+                let rangeBox = document.createElement('div');
+                rangeBox.style.cssText = 'display: inline-flex; align-items: baseline;  margin-right: 8px;';
+                fieldRenderers.rangeNumber(rangeBox, { ...field, label: field.hasRange, skipLabel: false }, dataObj);
+                listDiv.appendChild(rangeBox);
+            }
+
+            if (field.popup) {
+                let summary = document.createElement('input');
+                summary.type = 'text';
+                summary.readOnly = true;
+                summary.placeholder = t('cB.clickToSelect');
+                summary.className = 'multiSelect-summary';
+                summary.style.cssText = 'width: 500px;';
+                summary.onclick = (e) => {
+                    e.stopPropagation();
+                    document.querySelectorAll('.multiSelect-popup-panel').forEach(p => {
+                        let isHidden = panel.style.display === 'none';
+                        if (p === panel) panel.style.display = isHidden ? 'block' : 'none';
+                        else p.style.display = 'none';
+                    });
+                };
+
+                let panel = document.createElement('div');
+                panel.className = 'multiSelect-popup-panel';
+                panel.style.cssText = `
+                    display: none; position: absolute; z-index: 100; background: #fff; border: 1px solid #aaa; border-radius: 5px;
+                    padding: 5px 10px; min-width: 200px; max-width: 1000px; max-height: 300px; overflow-y: auto;
+                `;
+                panel.onclick = (e) => e.stopPropagation();
+
+                listDiv.style.position = 'relative';
+                listDiv.append(summary, panel);
+
+                const updateSummary = () => {
+                    let values = field.hasRange ? dataObj[field.key].slice(2) : dataObj[field.key];
+                    let labels = values.map(v => t(field.multiSelectOptions.find(opt => opt.value === v)?.label || v));
+                    summary.value = labels.join(', ');
+                };
+
+                renderCheckboxes(panel, updateSummary);
+                updateSummary();
+            } else {
+                renderCheckboxes(listDiv);
+            }
+
+            function renderCheckboxes(targetContainer, onUpdate) {
+                field.multiSelectOptions.forEach(opt => {
+                    let id = getUniqueId(`${field.key}_${opt.value}`);
+                    let span = document.createElement('span');
+                    span.style.cssText = 'display: inline-flex; align-items: center; margin-right: 8px;';
+
+                    let checkbox = document.createElement('input');
+                    checkbox.type = 'checkbox';
+                    checkbox.id = id;
+                    checkbox.checked = dataObj[field.key].includes(opt.value);
+                    checkbox.onchange = e => {
+                        if (e.target.checked) {
+                            if (!dataObj[field.key].includes(opt.value)) dataObj[field.key].push(opt.value);
+                        } else {
+                            if (field.hasRange) dataObj[field.key] = [...dataObj[field.key].slice(0, 2), ...dataObj[field.key].slice(2).filter(v => v !== opt.value)];
+                            else dataObj[field.key] = dataObj[field.key].filter(v => v !== opt.value);
+                        }
+                        if (onUpdate) onUpdate();
+                    };
+
+                    let label = document.createElement('label');
+                    label.htmlFor = id;
+                    label.textContent = t(opt.label);
+
+                    span.append(checkbox, label)
+                    targetContainer.appendChild(span);
+                });
+            }
+        }
+
+        function renderDynamicListMode() {
+            dataObj[field.key].forEach((value, index) => {
+                let row = document.createElement('div');
+                row.className = 'array-row';
+
+                let itemSchema = field.itemSchema;
+                if (itemSchema.discriminator) itemSchema = resolveSchema(itemSchema, value);
+
+                if (itemSchema.type === 'text') {
+                    renderField(row, { ...itemSchema, key: index, label: index + 1 }, dataObj[field.key]);
+                } else if (itemSchema.type === 'object') {
+                    let objDiv = document.createElement('div');
+                    objDiv.className = 'object-item';
+                    renderSchema(objDiv, itemSchema, value);
+                    row.appendChild(objDiv);
+                }
+
+                renderRowButtons(row, index);
+                listDiv.appendChild(row);
+            });
+
+            renderAddButtons(listDiv);
+        };
+
+        function renderArray() {
+            listDiv.innerHTML = '';
+            if (field.multiSelectOptions) renderMultiSelectMode();
+            else renderDynamicListMode();
+        }
+
+        renderArray();
+    },
+
+    fieldPicker(container, field, dataObj) {
+        let editFields = field.editFields || [];
+        if (!Array.isArray(dataObj[field.key])) dataObj[field.key] = [];
+
+        container.innerHTML = `<div${field.class ? ` class="${field.class}"` : ''} style="margin-top:8px;">${t(field.label)}</div>`;
+
+        let pickerWrap = document.createElement('div');
+        pickerWrap.style.cssText = 'display: flex; gap: 12px; align-items: center; padding-left: 10px;';
+        container.appendChild(pickerWrap);
+
+        let inputMap = {};
+        let leftFields = field.allFields.filter(f => !dataObj[field.key].some(d => d.id === f.id));
+        let rightFields = dataObj[field.key].map(d => {
+            let base = field.allFields.find(f => f.id === d.id);
+            return base ? { ...base, ...d } : null;
+        }).filter(Boolean);
+
+        const getSelectedIndexes = (select) => Array.from(select.selectedOptions, opt => +opt.value);
+        const getIndexGroups = (indexes) => {
+            return indexes.sort((a, b) => a - b).reduce((acc, value, i, array) => {
+                if (i > 0 && value === array[i - 1] + 1) acc.at(-1).push(value);
+                else acc.push([value]);
+                return acc;
+            }, []);
+        };
+
+        function updateDataObj() {
+            dataObj[field.key] = rightFields.map(f => {
+                let storageObj = { id: f.id };
+                editFields.forEach(editF => {
+                    let val = f[editF.key];
+                    if (val !== undefined && val !== null && val !== '') {
+                        storageObj[editF.key] = val;
+                    }
+                });
+                return storageObj;
+            });
+        }
+
+        function refresh(selectedItems = []) {
+            leftSelect.innerHTML = leftFields.map((f, i) => `<option value="${i}">${t(f.label)}</option>`).join('');
+            rightSelect.innerHTML = rightFields.map((f, i) => `<option value="${i}">${t(f.label)}</option>`).join('');
+            rightFields.forEach((f, i) => {
+                if (selectedItems.includes(f)) rightSelect.options[i].selected = true;
+            });
+            updateDataObj();
+        };
+
+        function transfer(fromArray, toArray, select, isToRight) {
+            let indexes = getSelectedIndexes(select).sort((a, b) => b - a);
+            if (!indexes.length) return;
+
+            let selectedItems = indexes.map(i => {
+                let item = fromArray[i];
+                if (isToRight) {
+                    editFields.forEach(editF => {
+                        item[editF.key] = '';
+                    });
+                }
+                return item;
+            }).reverse();
+
+            indexes.forEach(i => fromArray.splice(i, 1));
+            toArray.push(...selectedItems);
+            if (!isToRight) toArray.sort((a, b) => field.allFields.findIndex(f => f.id === a.id) - field.allFields.findIndex(f => f.id === b.id));
+            refresh(selectedItems);
+        }
+
+        function reorder(direction) {
+            let indexes = getSelectedIndexes(rightSelect);
+            if (!indexes.length) return;
+            let selectedItems = indexes.map(i => rightFields[i]);
+
+            if (direction === 'top' || direction === 'bottom') {
+                let unselected = rightFields.filter((f, i) => !indexes.includes(i));
+                rightFields = direction === 'top' ? [...selectedItems, ...unselected] : [...unselected, ...selectedItems];
+            } else {
+                let groups = getIndexGroups(indexes);
+                if (direction === 'up') {
+                    groups.forEach(group => {
+                        if (group[0] > 0) {
+                            let items = rightFields.splice(group[0], group.length);
+                            rightFields.splice(group[0] - 1, 0, ...items);
+                        }
+                    });
+                } else if (direction === 'down') {
+                    groups.reverse().forEach(group => {
+                        if (group.at(-1) < rightFields.length - 1) {
+                            let items = rightFields.splice(group[0], group.length);
+                            rightFields.splice(group[0] + 1, 0, ...items);
+                        }
+                    });
+                }
+            }
+            refresh(selectedItems);
+        };
+
+        let editBox = document.createElement('div');
+        editBox.style.cssText = 'display: flex; flex-direction: column; gap: 8px; min-width: 350px;';
+        editFields.forEach(editF => {
+            let div = document.createElement('div');
+            div.textContent = `${t(editF.label)}: `;
+
+            let input = document.createElement('input');
+            input.id = getUniqueId('editField');
+            input.type = 'text';
+            input.style.width = '100%';
+            if (editF.placeholder) input.placeholder = editF.placeholder;
+            input.addEventListener('input', () => {
+                let indexes = getSelectedIndexes(rightSelect);
+                indexes.forEach(i => {
+                    rightFields[i][editF.key] = input.value;
+                });
+                updateDataObj();
+            });
+
+            div.appendChild(input);
+            editBox.appendChild(div);
+
+            inputMap[editF.key] = input;
+        });
+
+        let leftSelect = document.createElement('select');
+        let rightSelect = document.createElement('select');
+        [leftSelect, rightSelect].forEach(s => {
+            s.multiple = true;
+            s.size = field.size || 12;
+            s.className = 'field-picker-select';
+        });
+        leftSelect.addEventListener('pointerdown', () => { rightSelect.selectedIndex = -1; });
+        rightSelect.addEventListener('pointerdown', () => { leftSelect.selectedIndex = -1; });
+        rightSelect.addEventListener('change', () => {
+            let indexes = getSelectedIndexes(rightSelect);
+            editFields.forEach(editF => {
+                inputMap[editF.key].value = (indexes.length > 0) ? (rightFields[indexes[0]][editF.key] || '') : '';
+            });
+        });
+
+        let btnBoxStyle = 'display: flex; flex-direction: column; gap: 4px;';
+
+        let moveBox = document.createElement('div');
+        moveBox.style.cssText = btnBoxStyle;
+        jpxUtils.createButton(moveBox, { text: decodeURIComponent('%E2%86%92'), onClick: () => transfer(leftFields, rightFields, leftSelect, true) });
+        jpxUtils.createButton(moveBox, { text: decodeURIComponent('%E2%86%90'), onClick: () => transfer(rightFields, leftFields, rightSelect, false) });
+
+        let sortBox = document.createElement('div');
+        sortBox.style.cssText = btnBoxStyle;
+        jpxUtils.createButton(sortBox, { text: decodeURIComponent('%E2%86%91%E2%86%91'), onClick: () => reorder('top') });
+        jpxUtils.createButton(sortBox, { text: decodeURIComponent('%E2%86%91'), onClick: () => reorder('up') });
+        jpxUtils.createButton(sortBox, { text: decodeURIComponent('%E2%86%93'), onClick: () => reorder('down') });
+        jpxUtils.createButton(sortBox, { text: decodeURIComponent('%E2%86%93%E2%86%93'), onClick: () => reorder('bottom') });
+
+        pickerWrap.append(leftSelect, moveBox, rightSelect, sortBox, editBox);
+        refresh();
+    },
+
+    object(container, field, dataObj) {
+        renderSchema(container, field, dataObj[field.key]);
+    },
+
+    keyBasedObjectArray(container, field, dataObj) {
+        let targetData = field.flatten ? dataObj : dataObj[field.key];
+
+        container.innerHTML = `<div${field.class ? ` class="${field.class}"` : ''} style="font-weight:bold; margin-bottom:4px;">${t(field.label)}</div>`;
+
+        let listDiv = document.createElement('div');
+        container.appendChild(listDiv);
+
+        function renderKeyBinding(key) {
+            let row = document.createElement('div');
+            row.style.cssText = 'border: 1px solid #444; padding: 10px; margin-bottom: 15px;';
+
+            let header = document.createElement('div');
+            header.style.cssText = 'display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px; border-bottom: 1px solid #444; padding-bottom: 5px;';
+
+            let span = document.createElement('span');
+            span.append(`${t('cB.binding')}: `);
+            jpxUtils.createButton(span, {
+                text: jpxUtils.formatKeyCombo(key, ' + '),
+                onClick: (btn, e) => {
+                    let originalText = btn.textContent;
+                    btn.textContent = '...';
+                    jpxUtils.captureKeyCombo(
+                        (result) => {
+                            let newKey = 'kb_' + result.comboString;
+                            if (newKey === key) return renderAll();
+                            if (targetData[newKey]) {
+                                jpxUtils.createToast(t('cB.duplicateKeys'));
+                                return renderAll();
+                            }
+
+                            let newEntries = Object.entries(targetData).map(([k, v]) => (k === key ? [newKey, v] : [k, v]));
+                            for (const k in targetData) delete targetData[k];
+                            Object.assign(targetData, Object.fromEntries(newEntries));
+
+                            renderAll();
+                        },
+                        () => { btn.textContent = originalText; }
+                    );
+                }
+            });
+            header.appendChild(span);
+
+            jpxUtils.createButton(header, {
+                text: t('delete'),
+                onClick: () => { if(confirm(`${t('delete')} ${jpxUtils.formatKeyCombo(key, ' + ')}?`)) { delete targetData[key]; renderAll(); } }
+            });
+
+            row.appendChild(header);
+
+            let arrayContainer = document.createElement('div');
+            renderField(arrayContainer, {
+                key,
+                skipLabel: true,
+                type: 'array',
+                canDisable: field.canDisable,
+                itemSchema: field.itemSchema,
+            }, targetData);
+            row.appendChild(arrayContainer);
+
+            listDiv.appendChild(row);
+        }
+
+        function renderAll() {
+            listDiv.innerHTML = '';
+            Object.keys(targetData).forEach(k => {
+                if (field.flatten && k.startsWith('kb_')) {
+                    renderKeyBinding(k);
+                } else if (!field.flatten) {
+                    renderKeyBinding(k);
+                }
+            });
+        }
+
+        jpxUtils.createButton(container, {
+            text: t('cB.addNewKeyBinding'),
+            onClick: (btn, e) => {
+                let originalText = btn.textContent;
+                btn.textContent = `... ${t('cB.recording')} ...`;
+                jpxUtils.captureKeyCombo(
+                    (result) => {
+                        let newKey = 'kb_' + result.comboString;
+                        if (targetData[newKey]) {
+                            jpxUtils.createToast(t('cB.duplicateKeys'));
+                        } else {
+                            targetData[newKey] = [];
+                        }
+                        renderAll();
+                        btn.textContent = originalText;
+                    },
+                    () => { btn.textContent = originalText; }
+                );
+            }
+        });
+
+        renderAll();
+    },
+
+    conditionsArray(container, field, dataObj) {
+        if (!Array.isArray(dataObj[field.key])) dataObj[field.key] = [];
+
+        let listDiv = document.createElement('div');
+        container.appendChild(listDiv);
+
+        function createRow(item, index) {
+            let selectId = getUniqueId('condition');
+
+            let row = document.createElement('div');
+            row.className = 'dynamic-array-row';
+            row.style.marginBottom = '6px';
+
+            let select = document.createElement('select');
+            select.id = selectId;
+            field.options.forEach(opt => {
+                let option = document.createElement('option');
+                option.value = opt.key;
+                option.textContent = t(opt.label);
+                select.appendChild(option);
+            });
+            select.value = item.key ?? field.options[0]?.key;
+            row.appendChild(select);
+
+            let inputDiv = document.createElement('div');
+            inputDiv.style.cssText = 'display: inline-flex; align-items: baseline; margin-left: 12px;';
+            row.appendChild(inputDiv);
+
+            let extraDiv = document.createElement('div');
+            extraDiv.style.cssText = 'display: inline-flex; gap: 8px;';
+            row.appendChild(extraDiv);
+
+            function renderInput() {
+                inputDiv.innerHTML = '';
+                extraDiv.innerHTML = '';
+
+                let selectedOption = field.options.find(option => option.key === select.value);
+                if (!selectedOption) return;
+
+                if ((item.key !== undefined && item.key !== select.value) || item.key === undefined) {
+                    Object.keys(item).forEach(k => delete item[k]);
+                    item.key = selectedOption.key;
+                    item.value = getDefaultValue(selectedOption.type, selectedOption.defaultValue);
+                }
+
+                if (selectedOption.extraFields) {
+                    selectedOption.extraFields.forEach(f => {
+                        if (item[f.key] === undefined) item[f.key] = getDefaultValue(f.type, f.defaultValue);
+                    });
+                }
+
+                if (selectedOption.type === 'array' && selectedOption.hasRange && selectedOption.extraFields) {
+                    inputDiv.style.width = '100%';
+                } else {
+                    inputDiv.style.width = 'auto';
+                }
+
+                renderField(inputDiv, {
+                    ...selectedOption,
+                    key: 'value',
+                    skipLabel: true,
+                }, item);
+
+                if (selectedOption.extraFields) {
+                    extraDiv.style.marginLeft = '12px';
+                    selectedOption.extraFields.forEach(f => {
+                        let wrap = document.createElement('div');
+                        wrap.style.display = 'inline-block';
+                        renderField(wrap, f, item);
+                        extraDiv.appendChild(wrap);
+                    });
+                } else {
+                    extraDiv.style.marginLeft = '0';
+                }
+            }
+
+            function getDefaultValue(type, defaultValue) {
+                if (defaultValue !== undefined) return JSON.parse(JSON.stringify(defaultValue));
+
+                switch (type) {
+                    case 'boolean': return false;
+                    case 'text': return '';
+                    case 'number': return 0;
+                    case 'rangeNumber': return [0, 0];
+                    case 'array': return [];
+                    case 'dropdown': return '';
+                    default: return null;
+                }
+            }
+
+            select.onchange = () => { renderInput(); };
+
+            let deleteButton = jpxUtils.createButton(row, {
+                text: 'x',
+                onClick: () => {
+                    dataObj[field.key].splice(index, 1);
+                    renderList();
+                }
+            });
+            deleteButton.style.marginLeft = '12px';
+
+            renderInput();
+            return row;
+        }
+
+        function renderList() {
+            listDiv.innerHTML = '';
+            dataObj[field.key].forEach((item, index) => {
+                listDiv.appendChild(createRow(item, index));
+            });
+        }
+
+        jpxUtils.createButton(container, {
+            text: `${t('add')} ${t(field.key)}`,
+            onClick: () => {
+                let newItem = {};
+                dataObj[field.key].push(newItem);
+                let index = dataObj[field.key].length - 1;
+                listDiv.appendChild(createRow(newItem, index));
+            }
+        });
+
+        renderList();
+    }
+};
+
+function renderField(container, field, dataObj) {
+    const renderer = fieldRenderers[field.type];
+    if (renderer) renderer(container, field, dataObj);
+}
+
+function resolveSchema(schema, dataObj) {
+    if (!schema.discriminator) return schema;
+    const typeValue = dataObj[schema.discriminator];
+    return schema.oneOf[typeValue];
+}
+
+function createEmptyObject(schema) {
+    const obj = {};
+    schema.properties.forEach(property => {
+        if (property.type === 'constant') {
+            obj[property.key] = property.value;
+            return;
+        }
+
+        if (property.default !== undefined) {
+            obj[property.key] = property.default;
+            return;
+        }
+
+        const defaults = {
+            text: '',
+            number: 0,
+            rangeNumber: [0,0],
+            boolean: false,
+            array: [],
+            fieldPicker: [],
+            object: () => createEmptyObject(property),
+            keyBasedObjectArray: {},
+        };
+
+        obj[property.key] = typeof defaults[property.type] === 'function' ? defaults[property.type]() : defaults[property.type] ?? undefined;
+    });
+
+    return obj;
+}
+
+function getUniqueId(prefix = 'input') {
+    return `${prefix}_${idCounter++}`;
+}
+
+function mergeCfg(storedCfg, defaultCfg, mergedCfg, mergedType) {
+    let vKey = mergedType === 'battle' ? 'battleVersion' : 'statsVersion';
+    //patch 20260109
+    if (mergedType === 'battle' && storedCfg) {
+        if (storedCfg.version && !storedCfg.battleVersion) {
+            storedCfg.battleVersion = storedCfg.version;
+            delete storedCfg.version;
+        }
+    }
+    //-
+    if (!storedCfg?.[vKey] || storedCfg[vKey] < defaultCfg[vKey]) storedCfg = {};
+
+    if (mergedType === 'battle') {
+        for (const key of BATTLE_MODES) {
+            let localObj = storedCfg[key];
+            //patch 20260208
+            key === '1H_Mage_General' && (localObj ??= storedCfg.Battlecaster_General);
+            //-
+            let isValid = localObj && Array.isArray(localObj.supports) && Array.isArray(localObj.attacks);
+            mergedCfg[key] = isValid ? localObj : JSON.parse(JSON.stringify(defaultCfg[key]));
+
+            //patch 20260103
+            mergedCfg[key].attacks.forEach(attack => {
+                if (attack.type === 'target' && 'bottomUp' in attack) {
+                    attack.priorityRule = attack.bottomUp ? 'Bottom Up' : 'Top Down';
+                    delete attack.bottomUp;
+                }
+            });
+            //-
+            //patch 20260309
+            mergedCfg[key].supports.forEach(support => {
+                if (support.type === 'spellInstant' || support.type === 'spellDuration') {
+                    support.type = 'spellSupport';
+                } else if (support.type === 'itemInstant' || support.type === 'itemDuration') {
+                    support.type = 'item';
+                }
+            });
+            //-
+        }
+
+        for (const key in defaultCfg) {
+            if (BATTLE_MODES.includes(key)) continue;
+            mergedCfg[key] = (key in storedCfg) ? storedCfg[key] : defaultCfg[key];
+        }
+    } else if (mergedType === 'stats') {
+        for (const key in defaultCfg) {
+            mergedCfg[key] = (key in storedCfg) ? storedCfg[key] : defaultCfg[key];
+        }
+    }
+}
+
+function renderSettings() {
+    let container = document.getElementById('settings-container');
+    if (container) {
+        container.remove();
+        return;
+    }
+
+    container = document.createElement('div');
+    container.id = 'settings-container';
+    container.style.cssText = 'text-align: left; font-size: 10pt; padding: 16px; max-width: 1200px; z-index: 3;';
+
+    let tabHeader = document.createElement('div');
+    tabHeader.style.cssText = 'border-bottom: 2px solid; margin-bottom: 15px;';
+
+    let tabs = [
+        {
+            id: 'battle',
+            text: t('cB.battleSettings'),
+            saveBtnText: t('cB.saveBattleConfig'),
+            exportBtnText: t('cB.exportBattleConfig'),
+            importBtnText: t('cB.importBattleConfig'),
+            render: renderBattleTab,
+            onSave() {
+                console.log(cfgBattle);
+                localStorage.setItem(prefix + 'cfgBattle' + isekaiSuffix, JSON.stringify(cfgBattle));
+                localStorage.setItem(prefix + 'userKeybinds' + isekaiSuffix, JSON.stringify(userKeybinds));
+            },
+            onExport() {
+                return { data: cfgBattle, fileName: `cfgBattle${isekaiSuffix}.txt`, depth: 3 };
+            },
+            onImport(content) {
+                let data = JSON.parse(content);
+                mergeCfg(data, cfgBattle, cfgBattle, 'battle');
+                return { uiId: 'cfgBattle-ui', schema: cfgBattleSchema, cfg: cfgBattle, transModeKey: true };
+            },
+        },
+        {
+            id: 'stats',
+            text: t('cS.statsSettings'),
+            saveBtnText: t('cS.saveStatsConfig'),
+            exportBtnText: t('cS.exportStatsConfig'),
+            importBtnText: t('cS.importStatsConfig'),
+            render: renderStatsTab,
+            onSave() {
+                console.log(cfgStats);
+                localStorage.setItem(prefix + 'cfgStats', JSON.stringify(cfgStats));
+            },
+            onExport() {
+                return { data: cfgStats, fileName: 'cfgStats.txt', depth: 2 };
+            },
+            onImport(content) {
+                let data = JSON.parse(content);
+                mergeCfg(data, cfgStats, cfgStats, 'stats');
+                return { uiId: 'cfgStats-ui', schema: cfgStatsSchema, cfg: cfgStats };
+            },
+        },
+    ];
+    tabs.forEach(tab => {
+        tab.btn = jpxUtils.createButton(tabHeader, {
+            className: 'settings-tab-btn',
+            cssText: 'padding: 10px 20px;',
+            text: tab.text,
+            onClick: () => switchTab(tab.id, tabs),
+        });
+
+        tab.panel = document.createElement('div');
+        tab.panel.id = `panel_${tab.id}`;
+        tab.panel.style.display = 'none';
+
+        tab.render(tab.panel);
+        container.appendChild(tab.panel);
+    });
+    container.prepend(tabHeader);
+
+    let buttonsUI = document.createElement('div');
+    buttonsUI.style.cssText = 'margin-top: 20px;';
+
+    jpxUtils.createButton(buttonsUI, {
+        id: 'save-button',
+        onClick: (btn) => {
+            let activeTab = tabs.find(t => t.panel.style.display === 'block');
+            if (!activeTab || !activeTab.onSave) return t('cGen.error!');
+            activeTab.onSave();
+            return t('cGen.saved!');
+        }
+    });
+
+    jpxUtils.createButton(buttonsUI, {
+        id: 'export-button',
+        onClick: () => {
+            let activeTab = tabs.find(t => t.panel.style.display === 'block');
+            if (!activeTab || !activeTab.onExport) return t('cGen.exportFailed!');
+
+            let info = activeTab.onExport();
+            let blob = new Blob([jpxUtils.stringifyLimited(info.data, info.depth)], { type: 'text/plain;charset=utf-8' });
+            let url = URL.createObjectURL(blob);
+            let a = document.createElement('a');
+            a.href = url;
+            a.download = info.fileName;
+            a.click();
+            URL.revokeObjectURL(url);
+
+            return t('cGen.exported!');
+        }
+    });
+
+    jpxUtils.createButton(buttonsUI, {
+        id: 'import-button',
+        onClick: (btn) => {
+            let activeTab = tabs.find(t => t.panel.style.display === 'block');
+            if (!activeTab || !activeTab.onImport) return t('cGen.importFailed!');
+            let input = document.createElement('input');
+            input.type = 'file';
+            input.accept = '.txt,.json';
+
+            return new Promise((resolve, reject) => {
+                input.addEventListener('change', async (e) => {
+                    const file = e.target.files[0];
+                    if (!file) return resolve();
+
+                    try {
+                        const content = await file.text();
+                        let info = activeTab.onImport(content);
+
+                        if (info.transModeKey) {
+                            let modeKey = document.querySelector('select[data-role="battleMode"]')?.value;
+                            if (modeKey) btn.dataset.battleMode = modeKey;
+                        }
+
+                        let oldUI = document.getElementById(info.uiId);
+                        let newUI = document.createElement('div');
+                        newUI.id = info.uiId;
+                        if (oldUI) oldUI.replaceWith(newUI);
+                        renderSchema(newUI, info.schema, info.cfg);
+
+                        resolve(t('cGen.imported!'));
+                    } catch (err) {
+                        console.error(err);
+                        reject(t('cGen.importFailed!'));
+                    }
+                });
+
+                input.click();
+            });
+        }
+    });
+
+    jpxUtils.createButton(buttonsUI, {
+        id: 'close-button',
+        text: t('cGen.closeSettings'),
+        onClick: () => container.remove()
+    });
+
+    container.appendChild(buttonsUI);
+    document.body.appendChild(container);
+
+    switchTab('battle', tabs);
+}
+
+function switchTab(targetId, tabs) {
+    let baseStyle = 'padding: 10px 20px; border: none; background: none;';
+    let activeStyle = baseStyle + 'color: #2196f3; font-weight: bold;';
+    let inactiveStyle = baseStyle + 'color: #666; font-weight: normal;';
+
+    tabs.forEach(tab => {
+        let isActive = (tab.id === targetId);
+
+        tab.btn.style.cssText = isActive ? activeStyle : inactiveStyle;
+        tab.panel.style.display = isActive ? 'block' : 'none';
+
+        if (isActive) {
+            let saveBtn = document.getElementById('save-button');
+            let exportBtn = document.getElementById('export-button');
+            let importBtn = document.getElementById('import-button');
+
+            if (saveBtn) saveBtn.textContent = tab.saveBtnText || 'Save Settings';
+            if (exportBtn) exportBtn.textContent = tab.exportBtnText || 'Export Settings';
+            if (importBtn) importBtn.textContent = tab.importBtnText || 'Import Settings';
+        }
+    });
+}
+
+function renderBattleTab(parent) {
+    let storedCfgBattle = {};
+    try {
+        storedCfgBattle = JSON.parse(localStorage.getItem(prefix + 'cfgBattle' + isekaiSuffix) || '{}');
+    } catch (err) {
+        console.warn('Failed to load cfgBattle. Using default cfgBattle.');
+        storedCfgBattle = {};
+    }
+    mergeCfg(storedCfgBattle, defaultCfgBattle, cfgBattle, 'battle');
+
+    let keybindsUI = document.createElement('div');
+    Object.keys(KEYBINDS).forEach(action => {
+        let row = document.createElement('div');
+
+        let span = document.createElement('span');
+        span.textContent = t(`cB.${action}`) + ': ';
+        row.appendChild(span);
+
+        jpxUtils.createButton(row, {
+            id: `btn_${action}`,
+            text: jpxUtils.formatKeyCombo(userKeybinds[action], ' + '),
+            onClick: (btn, e) => {
+                e.stopPropagation();
+                let originalText = btn.textContent;
+                btn.textContent = '...';
+                jpxUtils.captureKeyCombo(
+                    (result) => {
+                        userKeybinds[action] = {
+                            key: result.key,
+                            ctrl: result.ctrl,
+                            alt: result.alt,
+                            shift: result.shift
+                        };
+                        btn.textContent = jpxUtils.formatKeyCombo(userKeybinds[action], ' + ');
+                    },
+                    () => { btn.textContent = originalText; }
+                );
+            }
+        });
+        keybindsUI.appendChild(row);
+    });
+    parent.appendChild(keybindsUI);
+
+    let cfgBattleUI = document.createElement('div');
+    cfgBattleUI.id = 'cfgBattle-ui';
+    parent.appendChild(cfgBattleUI);
+    renderSchema(cfgBattleUI, cfgBattleSchema, cfgBattle);
+
+    let buttonsUI = document.createElement('div');
+    buttonsUI.style.marginTop = '20px';
+
+    jpxUtils.createButton(buttonsUI, {
+        id: 'export-current-button',
+        text: t('cB.exportCurrentBattleMode'),
+        onClick: () => {
+            let modeKey = document.querySelector('select[data-role="battleMode"]')?.value;
+            if (!cfgBattle[modeKey]) return t('cGen.exportFailed!');
+            let exportData = { [modeKey]: cfgBattle[modeKey], battleVersion: cfgBattle.battleVersion };
+            let blob = new Blob([jpxUtils.stringifyLimited(exportData, 3)], { type: 'text/plain;charset=utf-8' });
+            let url = URL.createObjectURL(blob);
+            let a = document.createElement('a');
+            a.href = url;
+            a.download = `cfgBattle_${modeKey}${isekaiSuffix}.txt`;
+            a.click();
+            URL.revokeObjectURL(url);
+
+            return t('cGen.exported!');
+        }
+    });
+
+    jpxUtils.createButton(buttonsUI, {
+        id: 'reset-current-button',
+        text: t('cB.resetCurrentBattleMode'),
+        onClick: (btn) => {
+            let modeKey = document.querySelector('select[data-role="battleMode"]')?.value;
+            if (!defaultCfgBattle[modeKey]) return t('cGen.resetFailed!');
+            cfgBattle[modeKey] = JSON.parse(JSON.stringify(defaultCfgBattle[modeKey]));
+            btn.dataset.battleMode = modeKey;
+
+            let oldUI = document.getElementById('cfgBattle-ui');
+            let newUI = document.createElement('div');
+            newUI.id = 'cfgBattle-ui';
+            if (oldUI) {
+                oldUI.replaceWith(newUI);
+                renderSchema(newUI, cfgBattleSchema, cfgBattle);
+            }
+
+            return t('cGen.reset!');
+        }
+    });
+
+    parent.appendChild(buttonsUI);
+}
+
+function renderStatsTab(parent) {
+    let storedCfgStats = {};
+    try {
+        storedCfgStats = JSON.parse(localStorage.getItem(prefix + 'cfgStats') || '{}');
+    } catch (err) {
+        console.warn('Failed to load cfgStats. Using default cfgStats.');
+        storedCfgStats = {};
+    }
+    mergeCfg(storedCfgStats, defaultCfgStats, cfgStats, 'stats');
+
+    let cfgStatsUI = document.createElement('div');
+    cfgStatsUI.id = 'cfgStats-ui';
+    parent.appendChild(cfgStatsUI);
+    renderSchema(cfgStatsUI, cfgStatsSchema, cfgStats);
+
+    let buttonsUI = document.createElement('div');
+    buttonsUI.style.marginTop = '20px';
+
+    jpxUtils.createButton(buttonsUI, {
+        id: 'reset-cfgStats-button',
+        text: t('cS.resetStatsSettings'),
+        onClick: (btn) => {
+            cfgStats = JSON.parse(JSON.stringify(defaultCfgStats));
+
+            let oldUI = document.getElementById('cfgStats-ui');
+            let newUI = document.createElement('div');
+            newUI.id = 'cfgStats-ui';
+            if (oldUI) {
+                oldUI.replaceWith(newUI);
+                renderSchema(newUI, cfgStatsSchema, cfgStats);
+            }
+
+            return t('cGen.reset!');
+        }
+    });
+
+    jpxUtils.createButton(buttonsUI, {
+        id: 'export-db-button',
+        text: t('cS.exportDB'),
+        onClick: async () => {
+            let exportData = await exportIndexedDB();
+            let blob = new Blob([jpxUtils.stringifyLimited(exportData, 3)], { type: 'application/json' });
+            let url = URL.createObjectURL(blob);
+            let a = document.createElement('a');
+            a.href = url;
+            a.download = `battleStats_${Date.now()}.json`;
+            a.click();
+            URL.revokeObjectURL(url);
+
+            return t('cGen.exported!');
+        }
+    });
+
+    jpxUtils.createButton(buttonsUI, {
+        id: 'import-db-button',
+        text: t('cS.importDB'),
+        onClick: (btn) => {
+            let input = document.createElement('input');
+            input.type = 'file';
+            input.accept = 'application/json';
+
+            return new Promise((resolve, reject) => {
+                input.addEventListener('change', async (e) => {
+                    const file = e.target.files[0];
+                    if (!file) return resolve();
+                    try {
+                        let content = await file.text();
+                        let json = JSON.parse(content);
+
+                        const merge = confirm(t('cS.importConfirm'));
+                        await importIndexedDB(json, merge);
+
+                        resolve(t('cGen.imported!'));
+                    } catch (err) {
+                        console.error(err);
+                        reject(t('cGen.importFailed!'));
+                    }
+                });
+
+                input.click();
+            });
+        }
+    });
+
+    parent.appendChild(buttonsUI);
+}
+
+//Misc
+function storeTmp() {
+    if (log) {
+        let btcp = document.querySelector('#btcp');
+        let finishBattle = document.querySelector('img[src$="finishbattle.png"]');
+
+        if (!btcp) {
+            localStorage.setItem(prefix + 'monsterData' + isekaiSuffix, JSON.stringify(monsterData));
+        }
+        if (!finishBattle) {
+            if (cfgBattle.recordBattleLog) {
+                if (Array.isArray(battleLogRecord)) localStorage.setItem(prefix + 'battleLogRecord' + isekaiSuffix, JSON.stringify(battleLogRecord));
+                /*patch*/
+                else localStorage.removeItem(prefix + 'battleLogRecord' + isekaiSuffix);
+            }
+            localStorage.setItem(prefix + 'timeRecords' + isekaiSuffix, JSON.stringify(timeRecords));
+            localStorage.setItem(prefix + 'combatRecords' + isekaiSuffix, JSON.stringify(combatRecords));
+            localStorage.setItem(prefix + 'revenueRecords' + isekaiSuffix, JSON.stringify(revenueRecords));
+        }
+    }
+}
+
+//I18n
+function initDoI18n() {
+    const mergeI18N = () => {Object.assign(mergedI18N, jpxUtils.deepMerge(JSON.parse(JSON.stringify(I18N)), window.jpxI18N || {}));};
+    let externalI18n = window.jpxI18N;
+    Object.defineProperty(window, 'jpxI18N', {
+        get: () => externalI18n,
+        set: (v) => {
+            externalI18n = v; mergeI18N();
+            jpxPanelManager.updateContent();
+    },
+        configurable: true
+    });
+    mergeI18N();
+}
+
+function t(path, args = {}) {
+    if (typeof path === 'number' || (!isNaN(path) && !isNaN(parseFloat(path)))) return String(path);
+    if (typeof path !== 'string') return path;
+
+    let keys = path.split('.');
+    let lastKey = keys.at(-1);
+    if (!isNaN(lastKey) && !isNaN(parseFloat(lastKey))) return String(lastKey);
+
+    let text = jpxUtils.getValueByPath(mergedI18N, keys);
+    if (text === undefined) text = jpxUtils.sentenceCase(lastKey);
+
+    if (args && typeof args === 'object') {
+        for (const prop in args) {
+            text = text.split('${' + prop + '}').join(String(args[prop]));
+        }
+    }
+
+    return text;
+}
+
+//Panel
+function jpxPanelManager(panelType) {
+    const ns = jpxPanelManager;
+    if (ns._init) return ns;
+
+    ns.ready = true;
+    ns.currentType = panelType;
+
+    ns.createCtrlWidget = function(type) {
+        if (ns.ctrlWidget) {
+            !document.querySelector('#ctrl-widget') && document.body.appendChild(ns.ctrlWidget);
+            return;
+        }
+        ns.currentType = type || ns.currentType;
+        ns.ctrlWidget = document.createElement('div');
+        ns.ctrlWidget.id = 'ctrl-widget';
+        if (cfgBattle.ctrlWidgetStyleText) ns.ctrlWidget.style.cssText = cfgBattle.ctrlWidgetStyleText;
+        ns.infoDiv = document.createElement('div');
+
+        switch (ns.currentType) {
+            case 'battle': {
+                ns.ctrlWidget.style.background = isActiveBattle ? '#4f4' : '#fef';
+                const throttledToggleBattle = jpxUtils.throttle(toggleActive, 200);
+                ns.ctrlWidget.addEventListener('pointerdown', (e) => {
+                    if (e.pointerType === 'mouse' && e.button !== 0) return;
+                    throttledToggleBattle();
+                });
+                if (cfgBattle.ctrlWidgetMouseEnter) {
+                    ns.ctrlWidget.addEventListener('mouseenter', (e) => {
+                        if (!ns.ready) return;
+                        throttledToggleBattle();
+                    });
+                }
+
+                let settingsDiv = document.createElement('div');
+                settingsDiv.textContent = t('cW.openSettings');
+                settingsDiv.style.background = '#bbb';
+                settingsDiv.addEventListener('pointerdown', (e) => {
+                    e.stopPropagation();
+                    e.preventDefault();
+                    if (!window.matchMedia('(hover: hover) and (pointer: fine)').matches) {
+                        let proficiencyRecord = document.querySelector('#proficiency-record');
+                        if (proficiencyRecord) proficiencyRecord.style.left = '800px';
+                    }
+                    renderSettings();
+                });
+                ns.ctrlWidget.appendChild(settingsDiv);
+                break;
+            }
+        }
+
+        ns.ctrlWidget.prepend(ns.infoDiv);
+        document.body.appendChild(ns.ctrlWidget);
+        ns.dispatchState();
+    };
+
+    ns.updateContent = function(type) {
+        if (!ns.infoDiv) return;
+        ns.currentType = type || ns.currentType;
+        switch (ns.currentType) {
+            case 'battle': {
+                ns.infoDiv.innerText = cfgBattle.ctrlWidgetRows
+                    .map(row => {
+                        let field = CTRLWIDGET_FIELDS.find(f => f.id === row.id);
+                        return field ? `${t(field.label)}: ${field.get()}` : null;
+                    })
+                    .filter(line => line !== null)
+                    .join('\n');
+                break;
+            }
+        }
+    };
+
+    ns.setBackground = function(color) {
+        if (ns.ctrlWidget) ns.ctrlWidget.style.background = color;
+    };
+
+    ns.dispatchState = function() {
+        setTimeout(()=> {
+            window.dispatchEvent(new CustomEvent('jpx_ctrlWidget_update', {
+                detail: {
+                    active: isActiveBattle,
+                    background: ns.ctrlWidget?.style.background,
+                    suffix: isekaiSuffix,
+                    timestamp: Date.now()
+                }
+            }));
+        }, 0);
+    };
+
+    ns._init = true;
+    return ns;
+}
+
+//Market
+function jpxMarket() {
+    const ns = jpxMarket;
+    if (ns._init) return ns;
+
+    ns.getMarketPrice = async function () {
+        let priceData = JSON.parse(localStorage.getItem(prefix + 'priceData' + isekaiSuffix) || '{}');
+        let currentDate = new Date().toISOString().slice(0, 10);
+        if (
+            !priceData?.lastUpdate ||
+            new Date(priceData.lastUpdate).toISOString().slice(0, 10) != currentDate
+        ) {
+            priceData = await this.updatePrice(priceData);
+        }
+
+        return priceData;
+    };
+
+    ns.updatePrice = async function (priceData) {
+        let finishBattle = document.querySelector('img[src$="finishbattle.png"]');
+        let isekaiSuffixUrl = document.URL.includes('isekai') ? 'isekai/' : '';
+        let urlArray = [
+            `${location.origin}/${isekaiSuffixUrl}?s=Bazaar&ss=mk&screen=browseitems&filter=co`,
+            `${location.origin}/${isekaiSuffixUrl}?s=Bazaar&ss=mk&screen=browseitems&filter=ma`,
+            `${location.origin}/${isekaiSuffixUrl}?s=Bazaar&ss=mk&screen=browseitems&filter=tr`,
+        ];
+        if (!isekaiSuffix) {
+            urlArray = urlArray.concat([
+                `${location.origin}/?s=Bazaar&ss=mk&screen=browseitems&filter=ar`,
+                `${location.origin}/?s=Bazaar&ss=mk&screen=browseitems&filter=fi`,
+                `${location.origin}/?s=Bazaar&ss=mk&screen=browseitems&filter=mo`,
+            ]);
+        }
+        let defaultPriceData = {
+            //Stamina
+            'Energy Drink': 400,
+
+            //Material
+            'Low-Grade Cloth': 2, 'Mid-Grade Cloth': 10, 'High-Grade Cloth': 50,
+            'Low-Grade Leather': 2, 'Mid-Grade Leather': 10, 'High-Grade Leather': 50,
+            'Low-Grade Metals': 2, 'Mid-Grade Metals': 10, 'High-Grade Metals': 50,
+            'Low-Grade Wood': 2, 'Mid-Grade Wood': 10, 'High-Grade Wood': 50,
+            'Scrap Cloth': 1, 'Scrap Leather': 1, 'Scrap Metal': 1, 'Scrap Wood': 1,
+            'Energy Cell': 2,
+
+            //Consumable
+            //    Restorative
+            'Health Draught': 1, 'Health Potion': 2, 'Health Elixir': 20,
+            'Mana Draught': 2, 'Mana Potion': 4, 'Mana Elixir': 40,
+            'Spirit Draught': 2, 'Spirit Potion': 4, 'Spirit Elixir': 40,
+            'Last Elixir': 40,
+            //    Infusion
+            'Infusion of Flames': 8, 'Infusion of Frost': 8, 'Infusion of Storms': 8, 'Infusion of Lightning': 8, 'Infusion of Divinity': 8, 'Infusion of Darkness': 8,
+            //    Scroll
+            'Scroll of Swiftness': 8, 'Scroll of Protection': 8, 'Scroll of the Avatar': 20,
+            'Scroll of Absorption': 4, 'Scroll of Shadows': 8, 'Scroll of Life': 12, 'Scroll of the Gods': 32,
+            //    Shard
+            'Voidseeker Shard': 10, 'Aether Shard': 50, 'Featherweight Shard': 10, 'Amnesia Shard': 50,
+            'World Seed': 50,
+            //    Special Item
+            'Flower Vase': 200, 'Bubble-Gum': 200,
+
+            //Token of Blood, Chaos Token, Soul Fragment
+            'Token of Blood': 0, 'Chaos Token': 0, 'Soul Fragment': 0,
+
+            //Food
+            'Monster Chow': 1, 'Monster Edibles': 1, 'Monster Cuisine': 1, 'Happy Pills': 10,
+
+            //Figurine
+            'Twilight Sparkle Figurine': 10000, 'Rainbow Dash Figurine': 10000, 'Applejack Figurine': 10000, 'Fluttershy Figurine': 10000,
+            'Pinkie Pie Figurine': 10000, 'Rarity Figurine': 10000, 'Trixie Figurine': 10000, 'Princess Celestia Figurine': 10000,
+            'Princess Luna Figurine': 10000, 'Apple Bloom Figurine': 10000, 'Scootaloo Figurine': 10000, 'Sweetie Belle Figurine': 10000,
+            'Big Macintosh Figurine': 10000, 'Spitfire Figurine': 10000, 'Derpy Hooves Figurine': 10000, 'Lyra Heartstrings Figurine': 10000,
+            'Octavia Figurine': 10000, 'Zecora Figurine': 10000, 'Cheerilee Figurine': 10000, 'Vinyl Scratch Figurine': 10000,
+            'Daring Do Figurine': 10000, 'Doctor Whooves Figurine': 10000, 'Berry Punch Figurine': 10000, 'Bon-Bon Figurine': 10000,
+            'Fluffle Puff Figurine': 10000, 'Angel Bunny Figurine': 10000, 'Gummy Figurine': 10000,
+
+            //Artifacts
+            'Precursor Artifact': 2000,
+
+            //Trophy
+            'ManBearPig Tail': 200, 'Holy Hand Grenade of Antioch': 200, "Mithra's Flower": 200, 'Dalek Voicebox': 200, 'Lock of Blue Hair': 200,
+            'Bunny-Girl Costume': 400, 'Hinamatsuri Doll': 400, 'Broken Glasses': 400,
+            'Black T-Shirt': 800, 'Sapling': 800,
+            'Unicorn Horn': 1000,
+            'Noodly Appendage': 1000,
+
+            //Crystal
+            'Crystal of Vigor': 1, 'Crystal of Finesse': 1, 'Crystal of Swiftness': 1, 'Crystal of Fortitude': 1, 'Crystal of Cunning': 1, 'Crystal of Knowledge': 1,
+            'Crystal of Flames': 1, 'Crystal of Frost': 1, 'Crystal of Lightning': 1, 'Crystal of Tempest': 1, 'Crystal of Devotion': 1, 'Crystal of Corruption': 1,
+
+            //Upgrade Material
+            'Wispy Catalyst': 1, 'Diluted Catalyst': 5, 'Regular Catalyst': 10, 'Robust Catalyst': 25, 'Vibrant Catalyst': 50, 'Coruscating Catalyst': 100,
+        };
+        let latestPriceData = {};
+
+        if (!log || finishBattle) {
+            priceData['lastUpdate'] = Date.now();
+            await jpxUtils.xhrGet(urlArray).then((results) => {
+                console.log('jpxUtils.xhrGet Results:');
+                console.log(results);
+                for (let result of results){
+                    if (result.status === 'rejected') {
+                        console.error(result.reason);
+                        break;
+                    }
+                    try {
+                        let parser = new DOMParser();
+                        let doc = parser.parseFromString(result.value.responseText, 'text/html');
+                        let itemListTrs = doc.querySelectorAll('#market_itemlist > table > tbody > tr');
+
+                        itemListTrs.forEach((itemListTr, index) => {
+                            if (index === 0) return;
+
+                            let itemListTds = itemListTr.querySelectorAll('td');
+                            if (itemListTds.length >= 4) {
+                                let name = itemListTds[0].textContent.trim();
+                                let bid = parseFloat(itemListTds[2].textContent.trim().replace(' C', '').replace(',', ''));
+                                let defaultBid = defaultPriceData[name];
+
+                                if (!isNaN(bid)) {
+                                    if (!isNaN(defaultBid)) {
+                                        if (bid >= defaultBid) {
+                                            latestPriceData[name] = bid;
+                                        } else {
+                                            latestPriceData[name] = defaultBid;
+                                        }
+                                    } else {
+                                        latestPriceData[name] = bid;
+                                    }
+                                } else if (!isNaN(defaultBid)) {
+                                    latestPriceData[name] = defaultBid;
+                                }
+                            }
+                        });
+                    } catch (e) {
+                        console.error('Parsing error for url: ' + result.value.url);
+                    }
+                }
+            });
+        }
+
+        for (let latestPriceDataKey in latestPriceData) {
+            priceData[latestPriceDataKey] = latestPriceData[latestPriceDataKey];
+        }
+        for (let defaultPriceDataKey in defaultPriceData) {
+            if (!priceData[defaultPriceDataKey]) {
+                priceData[defaultPriceDataKey] = defaultPriceData[defaultPriceDataKey];
+            }
+        }
+        if (isekaiSuffix) {
+            priceData['Energy Drink'] = 130000;
+        }
+
+        localStorage.setItem(prefix + 'priceData' + isekaiSuffix, JSON.stringify(priceData));
+
+        return priceData;
+    };
+
+    ns._init = true;
+    return ns;
+}
+
+//Utils
+function jpxUtils() {
+    const ns = jpxUtils;
+    if (ns._init) return ns;
+
+    ns.throttle = function (func, cooldownMillis, trailing = false) {
+        let lastRan = 0;
+        let timeoutId = null;
+        let trailingThis = null;
+        let trailingArgs = null;
+
+        return (...args) => {
+            if (Date.now() - lastRan > cooldownMillis) {
+                lastRan = Date.now();
+                func.call(this, ...args);
+            } else if (trailing) {
+                trailingThis = this;
+                trailingArgs = args;
+                if (!timeoutId) {
+                    timeoutId = setTimeout(() => {
+                        lastRan = Date.now();
+                        timeoutId = null;
+                        func.call(trailingThis, ...trailingArgs);
+                    }, cooldownMillis - (Date.now() - lastRan));
+                }
+            }
+        };
+    };
+
+    ns.secondsToTime = function (seconds) {
+        let tHours = Math.floor(seconds / 3600);
+        let tMinutes = Math.floor(seconds / 60) % 60;
+        let tSeconds = Math.round(seconds % 60);
+        let time =
+            tHours.toString().padStart(2, '0') + ':' +
+            tMinutes.toString().padStart(2, '0') + ':' +
+            tSeconds.toString().padStart(2, '0');
+
+        return time;
+    };
+
+    ns.daysSince = function(dateStr) {
+        if (!dateStr) return null;
+        let date = new Date(dateStr + 'T00:00:00Z');
+        if (isNaN(date)) return null;
+
+        let now = new Date();
+        let today = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate()));
+
+        return Math.floor((today - date) / (1000 * 60 * 60 * 24));
+    };
+
+    ns.getSortedArray = function(arr, getValue, asc = true) {
+        if (!Array.isArray(arr) || !arr.length) return [];
+
+        if (typeof getValue !== 'function') getValue = (item) => item;
+
+        return [...arr].sort((a, b) => {
+            let va = getValue(a);
+            let vb = getValue(b);
+            return asc ? va - vb : vb - va;
+        });
+    };
+
+    ns.lowerFirst = function (str) {
+        if (!str) return str;
+        return str.charAt(0).toLowerCase() + str.slice(1);
+    };
+
+    ns.titleCase = function (str, multiWord = false) {
+        if (!str) return str;
+        if (!multiWord && /\s/.test(str)) return str;
+        return str
+            .replace(/([a-z])([A-Z])/g, '$1 $2')
+            .replace(/[_-]/g, ' ')
+            .replace(/\b\w/g, c => c.toUpperCase());
+    };
+
+    ns.sentenceCase = function (str, multiWord = false) {
+        if (!str) return str;
+        if (!multiWord && /\s/.test(str)) return str;
+        return str
+            .replace(/([a-z])([A-Z])/g, '$1 $2')
+            .replace(/_/g, ' ')
+            .toLowerCase()
+            .replace(/^./, c => c.toUpperCase());
+    };
+
+    ns.matchAny = function (str, ...regexps) {
+        for (const regexp of regexps) {
+            let matches = str.match(regexp);
+            if (matches) {
+                return matches;
+            }
+        }
+        return null;
+    };
+
+    ns.isEmpty = function (obj) {
+        if (!obj || typeof obj !== 'object') return true;
+        for (const prop in obj) {
+            if (Object.hasOwn(obj, prop)) return false;
+        }
+
+        return true;
+    };
+
+    ns.inRange = function (value, range) {
+        let [min, max] = range;
+        return value >= min && value <= max;
+    };
+
+    ns.getValueByPath = function(obj, keys) {
+        let current = obj;
+        for (const key of keys) {
+            if (current[key] === undefined) return undefined;
+            current = current[key];
+        }
+        return current;
+    };
+
+    ns.deepMerge = function (target, source) {
+        if (!source) return target;
+        for (const key in source) {
+            if (source[key] instanceof Object && key in target) {
+                Object.assign(source[key], ns.deepMerge(target[key], source[key]));
+            }
+        }
+        Object.assign(target || {}, source);
+        return target;
+    };
+
+    ns.getSortedKeys = function(order, keys) {
+        let sortedKeys = order.filter(key => keys.includes(key));
+        let extraKeys = keys.filter(key => !order.includes(key));
+        return [...sortedKeys, ...extraKeys];
+    };
+
+    ns.inc = function (obj, key, step = 1) {
+        if (!obj || key == null) return;
+        obj[key] = (obj[key] ?? 0) + (step || 0);
+    };
+
+    ns.createButton = function (container, options) {
+        let { id, className, cssText, text, disabled, onClick } = options;
+
+        let btn = document.createElement('button');
+        if (id) btn.id = id;
+        if (className) btn.className = className;
+        if (cssText) btn.style.cssText = cssText;
+        if (text) btn.textContent = text;
+        if (disabled) btn.disabled = true;
+        container.appendChild(btn);
+
+        if (onClick) {
+            btn.addEventListener('click', (e) => {
+                let result = onClick(btn, e);
+
+                const handleTempText = (tempText) => {
+                    if (!tempText) return;
+                    let originalText = btn.textContent;
+                    btn.style.width = btn.offsetWidth + 'px';
+                    btn.textContent = tempText;
+                    btn.disabled = true;
+
+                    setTimeout(() => {
+                        btn.textContent = originalText;
+                        btn.style.width = '';
+                        btn.disabled = false;
+                    }, 1500);
+                };
+
+                if (result instanceof Promise) result.then(handleTempText).catch(handleTempText);
+                else handleTempText(result);
+            });
+        }
+
+        return btn;
+    };
+
+    ns.createToast = function(content, duration = 3000, styleName) {
+        let container = document.getElementById('toast-container');
+        if (!container) {
+            container = document.createElement('div');
+            container.id = 'toast-container';
+            container.style.cssText = 'position: fixed; right: 16px; bottom: 16px; display: flex; flex-direction: column-reverse; gap: 8px; z-index: 99999;';
+            document.body.appendChild(container);
+        }
+
+        let toast = document.createElement('div');
+        toast.textContent = content;
+        toast.style.cssText = 'padding: 10px 14px; background: #333; color: #fff; font-size: 14px; cursor: pointer; opacity: 0; transition: opacity .2s;';
+        if (styleName) toast.className = styleName;
+        container.appendChild(toast);
+        requestAnimationFrame(() => toast.style.opacity = '1');
+
+        const close = () => {
+            toast.style.opacity = '0';
+            setTimeout(() => toast.remove(), 200);
+        };
+
+        toast.addEventListener('pointerdown', close);
+        setTimeout(close, duration);
+
+        return toast;
+    };
+
+    ns.stringifyLimited = function(obj, maxPrettyLevel = 3) {
+        function helper(value, level) {
+            if (value && typeof value === 'object') {
+                const isArray = Array.isArray(value);
+                const entries = isArray ? value : Object.entries(value);
+
+                if (level < maxPrettyLevel) {
+                    if (isArray) {
+                        return '[\n' +
+                            value.map(value => '\t'.repeat(level + 1) + helper(value, level + 1))
+                                .join(',\n') + '\n' +
+                            '\t'.repeat(level) + ']';
+                    } else {
+                        return '{\n' +
+                            Object.entries(value)
+                                .map(([key, value]) => '\t'.repeat(level + 1) + JSON.stringify(key) + ': ' + helper(value, level + 1))
+                                .join(',\n') + '\n' +
+                            '\t'.repeat(level) + '}';
+                    }
+                } else {
+                    return JSON.stringify(value);
+                }
+            } else {
+                return JSON.stringify(value);
+            }
+        }
+
+        return helper(obj, 0);
+    };
+
+    ns.toRegExp = function(input) {
+        let match = input.match(/^\/(.*?)\/([dgimsuvy]*)$/);
+
+        if (match) {
+            let [, pattern, flags] = match;
+            try {
+                return new RegExp(pattern, flags);
+            } catch (e) {
+                console.error('Invalid regex syntax:', e.message);
+                return null;
+            }
+        }
+
+        return new RegExp(input.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'), 'i');
+    };
+
+    ns.keyCaptureController = null,
+    ns.captureKeyCombo = function(onComplete, onAbort) {
+        if (ns.keyCaptureController) ns.keyCaptureController.abort();
+        let currentController = new AbortController();
+        ns.keyCaptureController = currentController;
+        let signal = currentController.signal;
+
+        window.addEventListener('keydown', (e) => {
+            e.preventDefault();
+            if (e.key === 'Escape') { currentController.abort(); return; }
+            if (['Control', 'Alt', 'Shift', 'Meta'].includes(e.key)) return;
+
+            let result = {
+                key: e.key,
+                ctrl: e.ctrlKey,
+                alt: e.altKey,
+                shift: e.shiftKey,
+                comboString: '',
+            };
+            result.comboString = ns.formatKeyCombo(result, '+');
+
+            currentController.abort();
+            if (onComplete) onComplete(result);
+        }, { signal });
+        window.addEventListener('pointerdown', () => {
+            currentController.abort();
+        }, { signal, once: true });
+
+        signal.addEventListener('abort', () => {
+            if (ns.keyCaptureController === currentController) ns.keyCaptureController = null;
+            if (onAbort) onAbort();
+        });
+    };
+
+    ns.formatKeyCombo = function(input, separator = '+') {
+        let key, ctrl, alt, shift;
+        if (typeof input === 'string') {
+            let pureKey = input.startsWith('kb_') ? input.slice(3) : input;
+            let parts = pureKey.split('+');
+            key = parts.pop();
+            ctrl = parts.includes('Ctrl');
+            alt = parts.includes('Alt');
+            shift = parts.includes('Shift');
+        } else {
+            ({ key, ctrl, alt, shift } = input);
+        }
+
+        let result = [];
+        if (ctrl) result.push('Ctrl');
+        if (alt) result.push('Alt');
+        if (shift) result.push('Shift');
+        result.push(key === ' ' ? 'SPACE' : key.toUpperCase());
+        return result.join(separator);
+    };
+
+    ns.parseHVClasses = function (container, preserveSmallWords = false){
+        let content = [...container?.children]
+            .map(div => {
+                const HVClasses = {
+                    '2a': '.', '2b': ',', '2c': '!', '2d': '?', '2e': '%', '2f': '+', '2g': '-', '2h': '=', '2i': '/', '2j': '\\',
+                    '2k': "'", '2l': '"', '2m': ':', '2n': ';', '2o': '(', '2p': ')', '2q': '[', '2r': ']', '2s': '_', '39': ' ',
+                };
+
+                let key = div.className.slice(-2);
+                return HVClasses[key] ?? div.className.slice(-1);
+            })
+            .join('')
+            .toLowerCase()
+            .split(' ')
+            .map(word => word ? word.charAt(0).toUpperCase() + word.slice(1) : word)
+            .join(' ');
+
+        if (preserveSmallWords) {
+            let smallWords = ['Of', 'The'];
+            let regex = new RegExp(`(?<!^)\\b(${smallWords.join('|')})\\b(?<!$)`, 'g');
+            content = content.replace(regex, match => match.toLowerCase());
+        }
+
+        return content;
+    };
+
+    ns.createTimeRecords = function() {
+        return {
+            action: 0,
+            turn: 0,
+            riddle: { lastTurn: -1, solved: 0, total: 0 },
+            lastUse: {}
+        };
+    };
+
+    ns.createCombatRecords = function() {
+        return {
+            use: {},
+            physicalDealt: { glance:0, hit:0, crit:0, miss:0, evade:0, parryPartially:0, parry:0 },
+            magicalDealt: { glance:0, hit:0, crit:0, miss:0, evade:0, resist50:0, resist75:0, resist90:0, resistPartially:0, resist:0 },
+            physicalTaken: { glance:0, hit:0, crit:0, miss:0, evade:0, parryPartially:0, parry:0, blockPartially:0, block:0 },
+            magicalTaken: { glance:0, hit:0, crit:0, miss:0, evade:0, resist50:0, resist75:0, resist90:0, resistPartially:0, resist:0, blockPartially:0, block:0 },
+        };
+    };
+
+    ns.createRevenueRecords = function() {
+        return {
+            exp: 0,
+            credit: 0,
+            proficiency: {},
+            equipment: {},
+            material: {},
+            consumable: {},
+            token: {},
+            food: {},
+            figurine: {},
+            artifact: {},
+            trophy: {},
+            crystal: {},
+            staminaCost: 0,
+            totalProfit: 0,
+            finalProfit: 0,
+        };
+    };
+
+    ns.xhrGet = async function(urlArray, interval = 250) {
+        let promises = [];
+        urlArray.forEach((url, index) => {
+            const promise = new Promise((resolve, reject) => {
+                setTimeout(() => {
+                    let xhr = new XMLHttpRequest();
+                    xhr.open('GET', url, true);
+                    xhr.onload = () => {
+                        if (xhr.status === 200) {
+                            resolve({
+                                url: url,
+                                responseText: xhr.responseText,
+                            });
+                        } else {
+                            reject('Failed to load: ' + url);
+                        }
+                    };
+                    xhr.onerror = () => {
+                        reject('XHR error for URL: ' + url);
+                    };
+                    xhr.send();
+                }, index * interval);
+            });
+            promises.push(promise);
+        });
+
+        return Promise.allSettled(promises);
+    };
+
+    ns._init = true;
+    return ns;
+}
+
+initDo();
