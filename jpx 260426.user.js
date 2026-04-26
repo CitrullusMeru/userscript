@@ -650,7 +650,7 @@ let battleLogRecordCurrent = [];
 let timeRecords = {};
 let combatRecords = {};
 let revenueRecords = {};
-let spellDamageBonus = JSON.parse(localStorage.getItem(prefix + 'spellDamageBonus' + isekaiSuffix) || '{"maxType":"fire","maxValue":0}');
+let spellDamageBonus = JSON.parse(localStorage.getItem(prefix + 'spellDamageBonus' + isekaiSuffix) || '{"maxType":"cold","maxValue":0}');
 
 let dummy = document.createElement('div');
 let newWindow;
