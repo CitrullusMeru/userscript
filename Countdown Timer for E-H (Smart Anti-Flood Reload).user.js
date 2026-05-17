@@ -1,10 +1,10 @@
 // ==UserScript==
-// @name         Countdown Timer for the Random Encounter Event on E-Hentai (DOM & HTTPS Fixed)
-// @description  Adds a countdown timer for the Random Encounter event on E-Hentai.org and its subdomains. Fixes modern HTTPS and DOM selection issues.
+// @name         Countdown Timer for E-H (Smart Anti-Flood Reload)
+// @description  Adds a countdown timer for E-H RE. Reloads smartly every 5 seconds when ready until the encounter appears, preventing infinite instant loops.
 // @grant        none
 // @include      https://e-hentai.org/*
 // @include      https://*.e-hentai.org/*
-// @version      0.0.4
+// @version      0.0.5
 // @namespace    https://greasyfork.org/users/2233
 // ==/UserScript==
 
@@ -15,7 +15,6 @@ var href = loc.href
 
 if(!doc.querySelector('*[name="ipb_login_submit"]') && /(\.e-hentai\.org\/)|(^e-hentai.org\/)/.test(loc.hostname+'/') && !/\/palette\.html?\b/.test(href) && !doc.getElementById('countdown_timer')) {
     
-    // 改用現代標準的 encodeURIComponent / decodeURIComponent 處理 Cookie
     var set_cookie = function(k, v, t) {
         var expires = '; expires=Fri, 31 Dec 9999 23:59:59 GMT'
         if(t) {
@@ -24,10 +23,6 @@ if(!doc.querySelector('*[name="ipb_login_submit"]') && /(\.e-hentai\.org\/)|(^e-
             expires = '; expires=' + d.toGMTString()
         }
         doc.cookie = k + '=' + encodeURIComponent(v) + expires + '; domain=.' + /[^\.]+\.[^\.]+$/.exec(loc.hostname)[0] + '; path=/';
-    }
-    
-    var set_session_cookie = function(k, v) {
-        doc.cookie = k + '=' + encodeURIComponent(v) + '; domain=.' + /[^\.]+\.[^\.]+$/.exec(loc.hostname)[0] + '; path=/';
     }
 
     var get_cookie = function(k) {
@@ -48,6 +43,20 @@ if(!doc.querySelector('*[name="ipb_login_submit"]') && /(\.e-hentai\.org\/)|(^e-
     var timer_box = doc.createElement('DIV')
     timer_box.id = 'countdown_timer'
     timer_box.onclick = function() { if(/\bReady\b/i.test(this.textContent)) { wnd.open('https://e-hentai.org/news.php', href=='https://e-hentai.org/news.php'?'_self':'_blank') } }
+
+    // 檢查目前網頁上到底有沒有 Encounter 存在
+    var check_has_encounter = function() {
+        var ep = doc.getElementById('eventpane');
+        if (!ep) return false;
+        var links = ep.getElementsByTagName('a');
+        for(var i=0; i<links.length; i++) {
+            var onclick_str = links[i].getAttribute('onclick') || '';
+            if(/hentaiverse\.org/i.test(links[i].href) || /hentaiverse\.org/i.test(onclick_str)) {
+                return true; // 發現活動連結！
+            }
+        }
+        return false;
+    }
 
     var toggle_re_lst = function() {
         var re_lst_box = doc.getElementById('re_lst_box')
@@ -115,9 +124,20 @@ if(!doc.querySelector('*[name="ipb_login_submit"]') && /(\.e-hentai\.org\/)|(^e-
         var diff = parseInt(get_cookie('event')) + 1800 - now
         if(isNaN(diff)) { setTimeout(function() {loc.reload()}, 60000); return }
         
+        // 檢查畫面上是否已經出現 Encounter
+        var has_re = check_has_encounter();
+
         if(diff <= 0) {
             timer_box.textContent = 'Ready! re_cnt=' + get_cookie('re_cnt')
             
+            // 【核心修正】：如果已經有 Encounter 了，絕對不重整，安靜等待玩家點擊
+            if (has_re) {
+                console.log('Encounter detected! Stopping auto-reload.');
+                return; 
+            }
+
+            // 如果時間到了，但畫面上「沒有圖」，代表伺服器慢了。
+            // 這裡不實時重整，而是設定「5秒鐘後」才重整一次，溫和抽卡，直到圖出來為止
             if(href == 'https://e-hentai.org/news.php') {
                 if(/^Your IP.*banned/i.test(doc.body.textContent)) { return; }
                 if(/The site is currently in Read Only\/Failover Mode/i.test(doc.documentElement.innerHTML)) { 
@@ -125,24 +145,22 @@ if(!doc.querySelector('*[name="ipb_login_submit"]') && /(\.e-hentai\.org\/)|(^e-
                     return; 
                 }
                 
-                if(get_cookie('re_reloaded') !== '1') {
-                    set_session_cookie('re_reloaded', '1');
-                    loc.reload();
-                }
+                console.log('Ready but no encounter yet. Scheduling retry in 5s...');
+                setTimeout(function() {
+                    // 再次確認這5秒內圖有沒有跑出來，真的沒有才重整
+                    if (!check_has_encounter()) {
+                        loc.reload();
+                    }
+                }, 5000); // 5000毫秒 = 5秒冷卻，可自行修改
             }
             return; 
         } else {
-            if(get_cookie('re_reloaded') === '1') {
-                set_session_cookie('re_reloaded', '0');
-            }
-            
             var mm = Math.floor(diff / 60) + ''
             mm = (mm.length >= 2 ? mm : '0' + mm)
             var ss = Math.floor(diff % 60) + ''
             ss = (ss.length >= 2 ? ss : '0' + ss)
             timer_box.textContent = mm + ':' + ss + ', re_cnt=' + get_cookie('re_cnt')
             
-            // 安全防禦：重構脆弱的 DOM 節點檢查，避免找不到節點時音效播不出且腳本崩潰
             if( (mm == '00') || ((mm == '01') && (ss == '00')) ) {
                 try {
                     var ep = doc.getElementById('eventpane');
@@ -171,7 +189,6 @@ if(!doc.querySelector('*[name="ipb_login_submit"]') && /(\.e-hentai\.org\/)|(^e-
 
     var eventpane = doc.getElementById('eventpane')
     if(eventpane != null) {
-        // 【關鍵修正 1】：改用正則不分大小寫、不分 http/https 去抓取包含 hentaiverse.org 的連結或 onclick 元素
         var re_evt = null;
         var links = eventpane.getElementsByTagName('a');
         for(var i=0; i<links.length; i++) {
@@ -200,12 +217,8 @@ if(!doc.querySelector('*[name="ipb_login_submit"]') && /(\.e-hentai\.org\/)|(^e-
                     set_cookie('re_lst', re_lst)
                 } catch(err) {}
             }
-            else {
-                console.log('Error: There is a random encounter event but the HentaiVerse link cannot be found.')
-                throw 'exit'
-            }
             
-            // 【關鍵修正 2】：確保 Encounter 區塊強制在頁面上顯示出來（避免被原網站樣式隱藏）
+            // 強制讓活動區塊現形
             eventpane.style.setProperty('display', 'block', 'important');
             re_evt.style.setProperty('display', 'inline-block', 'important');
             
