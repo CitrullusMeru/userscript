@@ -1,0 +1,196 @@
+// ==UserScript==
+// @name            Countdown Timer for the Random Encounter Event on E-H (Safari Mobile Fixed)
+// @description     Adds a countdown timer for the Random Encounter event on E-Hentai.org and its subdomains. Optimized for Safari Mobile.
+// @grant           none
+// @include         https://e-hentai.org/*
+// @include         https://*.e-hentai.org/*
+// @version         0.0.4
+// ==/UserScript==
+
+(function() {
+    'use strict';
+
+    var wnd = window;
+    var doc = wnd.document;
+    var loc = location;
+    var href = loc.href;
+
+    // 基礎安全過濾：登入頁、非 EH 網域、調色盤頁面，或已存在計時器則不執行
+    if(doc.querySelector('*[name="ipb_login_submit"]') || !/(\.e-hentai\.org\/)|(^e-hentai.org\/)/.test(loc.hostname+'/') || /\/palette\.html?\b/.test(href) || doc.getElementById('countdown_timer')) {
+        return;
+    }
+
+    // 將 Cookie 讀寫替換為更穩定的 localStorage
+    var get_storage = function(k) {
+        // 優先嘗試從官方 Cookie 讀取真正的 'event' 時間戳記
+        if (k === 'event') {
+            var n = k + '=';
+            var ca = doc.cookie.split(';');
+            for(var i=0; i<ca.length; i++) {
+                var c = ca[i];
+                while (c.charAt(0) == ' ') { c = c.substring(1); }
+                if (c.indexOf(n) == 0) { return decodeURIComponent(c.substring(n.length, c.length)); }
+            }
+        }
+        // 自訂數據改用 localStorage 儲存
+        return localStorage.getItem('eh_re_' + k) || undefined;
+    };
+
+    var set_storage = function(k, v) {
+        localStorage.setItem('eh_re_' + k, v);
+    };
+
+    // 初始化本地數據
+    if(!get_storage('re_cnt')) { set_storage('re_cnt', 0); }
+    if(!get_storage('re_lst')) { set_storage('re_lst', '[]'); }
+
+    var timer_box = doc.createElement('DIV');
+    timer_box.id = 'countdown_timer';
+    timer_box.onclick = function() { if(/\bReady\b/i.test(this.textContent)) { wnd.open('https://e-hentai.org/news.php', href=='https://e-hentai.org/news.php'?'_self':'_blank'); } };
+
+    var toggle_re_lst = function() {
+        var re_lst_box = doc.getElementById('re_lst_box');
+        if(re_lst_box) { re_lst_box.parentNode.removeChild(re_lst_box); return; }
+        re_lst_box = doc.createElement('DIV');
+        re_lst_box.id = 're_lst_box';
+        re_lst_box.style.cssText = 'top:15px; right:0px; position:fixed; z-index:2147483647; background:rgba(0,255,0,1); color:#ff0000;';
+        setTimeout(function() { re_lst_box.style.cssText = 'top:15px; right:0px; position:fixed; z-index:2147483647; background:rgba(0,255,0,0.2); color:#ff0000;'; }, 3000);
+        re_lst_box.innerHTML = '[List of RE Events Occurred Today]<BR>';
+        re_lst_box.onmouseover = function () { this.style.cssText = 'top:15px; right:0px; position:fixed; z-index:2147483647; background:rgba(0,255,0,1); color:#ff0000;'; };
+        re_lst_box.onmouseout = function () { this.style.cssText = 'top:15px; right:0px; position:fixed; z-index:2147483647; background:rgba(0,255,0,0.2); color:#ff0000;'; };
+        
+        var decode_hv_b64 = function(e) {
+            var a = doc.createElement('A');
+            a.href = 'http://hentaiverse.org/?s=Battle&ss=ba&encounter=' + e;
+            a.target = '_blank';
+            a.text = (i+1) + '. ';
+            a.style.cssText = 'color:#ff0000';
+            var d = atob(e);
+            var m = /([^-]+?)-([^-]+?)-([^-]+)/.exec(d);
+            if(m == null) { return a; }
+            var uid = m[1];
+            var epoch = m[2];
+            var hash = m[3];
+            var da = new Date();
+            da.setTime(parseInt(epoch)*1000);
+            da = da.toLocaleTimeString();
+            a.text = a.text + da;
+            return a;
+        };
+        var re_lst = JSON.parse(get_storage('re_lst'));
+        if(re_lst) {
+            for(var i=0, len=re_lst.length; i<len; i++) {
+                var a = decode_hv_b64(re_lst[i]);
+                if(i != 0) { re_lst_box.appendChild(doc.createElement('BR')); }
+                re_lst_box.appendChild(a);
+            }
+            doc.body.appendChild(re_lst_box);
+        }
+    };
+    
+    addEventListener('keydown', function(evt) { if((evt.target.tagName!='INPUT') && (evt.target.tagName!='TEXTAREA') && (evt.keyCode == 76)) { toggle_re_lst(); } }, false);
+    if(href == 'https://e-hentai.org/news.php') { toggle_re_lst(); }
+
+    var newshead = doc.getElementById('newshead');
+    if(newshead && /\/e-hentai\./.test(href)) {
+        timer_box.style.color = '#ff0000';
+        newshead.appendChild(timer_box);
+    } else {
+        timer_box.style.cssText = 'line-height:15px; top:0px; right:0px; position:fixed; z-index:2147483647; background:rgba(0,255,0,0.2); color:#ff0000;';
+        doc.body.appendChild(timer_box);
+    }
+
+    var update_timer = function() {
+        if(href == 'https://e-hentai.org/news.php') {
+            var da = new Date();
+            if((da.getUTCHours()==0) && (da.getUTCMinutes()==0) && (da.getUTCSeconds()<=10)) {
+                if(!/^Your IP.*banned/i.test(doc.body.textContent)) {
+                    setTimeout(function() {loc.reload();}, 10000);
+                }
+            }
+        }
+        
+        // 讀取官方 cookie 或者是我們本地備份的時間戳記
+        var eventTime = get_storage('event') || get_storage('backup_event');
+        
+        // 如果完全沒有任何時間紀錄（代表今天還沒遇到第一次事件）
+        if(!eventTime) {
+            timer_box.textContent = 'Waiting for 1st RE Event...';
+            setTimeout(update_timer, 2000);
+            return;
+        }
+
+        var now = Math.floor(new Date().getTime()/1000);
+        var diff = parseInt(eventTime) + 1800 - now;
+        
+        if(isNaN(diff)) { 
+            setTimeout(function() {loc.reload();}, 60000); 
+            return; 
+        }
+        
+        if(diff <= 0) {
+            timer_box.textContent = 'Ready! re_cnt=' + get_storage('re_cnt');
+            if(href == 'https://e-hentai.org/news.php') {
+                if(/^Your IP.*banned/i.test(doc.body.textContent)) {}
+                else if(/The site is currently in Read Only\/Failover Mode/i.test(doc.documentElement.innerHTML)) { setTimeout(function() {loc.reload();}, 60000); }
+                else { 
+                    // 只有當真的有 event 紀錄且時間到了，才允許刷新首頁
+                    if (get_storage('event')) { loc.reload(); } 
+                }
+                return;
+            }
+        } else {
+            var mm = Math.floor(diff / 60) + '';
+            mm = (mm.length >= 2 ? mm : '0' + mm);
+            var ss = Math.floor(diff % 60) + '';
+            ss = (ss.length >= 2 ? ss : '0' + ss);
+            timer_box.textContent = mm + ':' + ss + ', re_cnt=' + get_storage('re_cnt');
+            
+            // 此處原本為音效觸發邏輯，已移除
+        }
+        setTimeout(update_timer, 1000);
+    };
+    update_timer();
+
+    var eventpane = doc.getElementById('eventpane');
+    if(eventpane != null) {
+        var re_evt = eventpane.querySelector('a[onclick*="http://hentaiverse.org/"]');
+        if(re_evt) {
+            var hv_lnk = '';
+            if((/^http:\/\//.test(re_evt.href)) && (!/#/.test(re_evt.href))) { hv_lnk = re_evt.href; }
+            else {
+                hv_lnk = /.*window\.open\(['"]?([^'"]+)['"]?/.exec(re_evt.onclick.toString().split('\n').join(''));
+                if(hv_lnk) { hv_lnk = hv_lnk[1]; }
+            }
+            if(hv_lnk) {
+                var hv_b64 = hv_lnk.replace(/.+?&encounter=([^&]*).*/, '$1');
+                var re_lst = JSON.parse(get_storage('re_lst'));
+                if((!re_lst) || (re_lst.length == 0)) { re_lst = []; }
+                if(re_lst.indexOf(hv_b64) == -1) { re_lst.push(hv_b64); }
+                re_lst = JSON.stringify(re_lst, null, ' ');
+                set_storage('re_lst', re_lst);
+                
+                // 遇到事件時，順便在本地備份當下的時間戳記，防止官方 Cookie 突然消失
+                set_storage('backup_event', Math.floor(new Date().getTime()/1000));
+            }
+            else {
+                console.log('Error: There is a random encounter event but the HentaiVerse link cannot be found.');
+                return;
+            }
+            re_evt.addEventListener('click', function() {
+                if(re_evt.text != 'HentaiVerse') {
+                    set_storage('re_cnt', parseInt(get_storage('re_cnt'))+1);
+                    re_evt.text = 'HentaiVerse';
+                    if(doc.getElementById('re_lst_box')) { toggle_re_lst(); toggle_re_lst(); }
+                }
+                eventpane.style.display = 'block';
+            }, false);
+        }
+        else if(/\bdawn\b/i.test(eventpane.textContent)) {
+            set_storage('re_cnt', 0);
+            set_storage('re_lst', '[]');
+            localStorage.removeItem('eh_re_backup_event');
+            if(doc.getElementById('re_lst_box')) { toggle_re_lst(); toggle_re_lst(); }
+        }
+    }
+})();
